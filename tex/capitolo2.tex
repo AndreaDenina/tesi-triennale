@@ -200,7 +200,42 @@ Tipicamente vengono utilizzati strumenti di monitoring per raccogliere dati come
 
 Nel mio progetto, il monitoring della pipeline dati è stato realizzato tramite l’integrazione di strumenti open source come StatsD, Prometheus e Grafana. Airflow esporta automaticamente metriche relative allo stato delle task, alle risorse utilizzate (CPU/RAM) e alla durata delle esecuzioni, che vengono poi raccolte e visualizzate in dashboard interattive. Questo consente di identificare rapidamente task fallite o anomalie di performance e intervenire in modo reattivo, garantendo affidabilità ed efficienza nella gestione dei workflow automatizzati.
 
-\subsection{StatsD}
+\subsection{StatsD e StatsD Exporter}
 \label{sec:statsd}
 
-STATSD È UN DEMONE
+\textbf{StatsD} è un \textit{network daemon} sviluppato da Etsy, progettato per raccogliere metriche inviate dalle applicazioni tramite protocolli leggeri come UDP o TCP. Ogni metrica è rappresentata dalla sintassi:
+
+\begin{verbatim}
+<nome_metrica>:<valore>|<tipo>
+\end{verbatim}
+
+dove il nome, espresso in notazione a punti (es. \texttt{dag.task.duration}), identifica la metrica, il valore è numerico e il tipo può indicare un contatore (\texttt{c}), un gauge (\texttt{g}), un timer (\texttt{ms}), ecc. Airflow utilizza questo formato per esportare automaticamente informazioni come l’avvio e il completamento delle task, la durata delle esecuzioni e l’uso delle risorse, inviandole in modo asincrono e a basso overhead.
+
+Poiché il formato StatsD non è compatibile con Prometheus, entra in gioco lo \textbf{StatsD Exporter}, un servizio che traduce le metriche ricevute in serie temporali etichettate secondo lo standard Prometheus. La conversione è definita tramite un file di mapping in YAML, che permette di trasformare un nome di metrica come:
+
+\begin{verbatim}
+task.cpu_usage.vital_signs.process_dump:30|g
+\end{verbatim}
+
+nella forma Prometheus:
+
+\begin{verbatim}
+cpu_usage{dag="vital_signs", task="process_dump"} 30
+\end{verbatim}
+
+In questo modo le metriche diventano interrogabili con PromQL e possono essere visualizzate in Grafana. Dal punto di vista infrastrutturale, StatsD Exporter è stato configurato come servizio dedicato in \texttt{docker-compose.yml}, in ascolto sulla porta \texttt{9125} per ricevere i pacchetti StatsD da Airflow e sulla porta \texttt{9102} per esporre le metriche convertite a Prometheus.
+
+\subsection{Prometheus}
+\label{sec:prometheus}
+Prometheus è una piattaforma open source progettata per il monitoraggio e l’alerting. È nata in SoundCloud e oggi fa parte della Cloud Native Computing Foundation.
+Il suo funzionamento si basa su un approccio pull: invece di ricevere metriche dagli applicativi, Prometheus interroga periodicamente gli endpoint degli strumenti monitorati (ad esempio ogni 5 o 10 secondi) e raccoglie le metriche esposte in un formato testuale standard.
+Queste metriche vengono archiviate come serie temporali, cioè insiemi di valori numerici associati a un timestamp e a un insieme di etichette (labels) che ne descrivono il contesto, ad esempio il nome del task o l’identificativo del DAG in Airflow.
+
+Prometheus offre diversi vantaggi:
+\begin{itemize}
+    \item conserva le metriche in un database ottimizzato per le serie temporali, permettendo query efficienti;
+    \item utilizza un linguaggio dedicato, PromQL, che consente di analizzare e trasformare i dati (calcolare medie, percentili, confrontare valori tra task o host diversi);
+    \item può generare regole di alerting, ad esempio inviando notifiche quando una metrica supera una certa soglia o quando un servizio non risponde più;
+    \item si integra facilmente con strumenti di visualizzazione come Grafana, che permette di trasformare i dati raccolti in dashboard interattive.
+\end{itemize}
+
