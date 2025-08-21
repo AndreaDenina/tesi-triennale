@@ -200,6 +200,13 @@ Tipicamente vengono utilizzati strumenti di monitoring per raccogliere dati come
 
 Nel mio progetto, il monitoring della pipeline dati è stato realizzato tramite l’integrazione di strumenti open source come StatsD, Prometheus e Grafana. Airflow esporta automaticamente metriche relative allo stato delle task, alle risorse utilizzate (CPU/RAM) e alla durata delle esecuzioni, che vengono poi raccolte e visualizzate in dashboard interattive. Questo consente di identificare rapidamente task fallite o anomalie di performance e intervenire in modo reattivo, garantendo affidabilità ed efficienza nella gestione dei workflow automatizzati.
 
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/monitoraggioschema.png}
+    \caption{Schema logico dei servizi di estrazione metriche e monitoraggio}
+    \label{fig:monitoring_schema}
+\end{figure}
+
 \subsection{StatsD e StatsD Exporter}
 \label{sec:statsd}
 
@@ -231,6 +238,15 @@ Prometheus è una piattaforma open source progettata per il monitoraggio e l’a
 Il suo funzionamento si basa su un approccio pull: invece di ricevere metriche dagli applicativi, Prometheus interroga periodicamente gli endpoint degli strumenti monitorati (ad esempio ogni 5 o 10 secondi) e raccoglie le metriche esposte in un formato testuale standard.
 Queste metriche vengono archiviate come serie temporali, cioè insiemi di valori numerici associati a un timestamp e a un insieme di etichette (labels) che ne descrivono il contesto, ad esempio il nome del task o l’identificativo del DAG in Airflow.
 
+Un aspetto centrale di Prometheus è la distinzione tra i tipi di metrica che le applicazioni possono esportare:
+
+\begin{itemize}
+    \item \textbf{Counter}: rappresenta un contatore che cresce monotonamente e può solo aumentare (o essere azzerato al riavvio). È usato ad esempio per il numero di richieste servite, task completate o errori riscontrati.
+    \item \textbf{Gauge}: è un valore numerico che può sia aumentare che diminuire. Viene utilizzato per misurazioni istantanee come l’utilizzo della memoria, la temperatura, o il numero di processi attivi in un certo momento.
+    \item \textbf{Histogram}: registra osservazioni (come la durata delle richieste o la dimensione delle risposte) suddividendole in bucket configurabili, e produce tre serie temporali: il conteggio cumulativo per bucket, la somma totale e il numero complessivo di osservazioni. È utile per calcolare quantili.
+    \item \textbf{Summary}: simile all’histogram, campiona osservazioni e fornisce conteggio e somma, ma calcola direttamente quantili configurabili su una finestra temporale mobile. È adatto per ottenere metriche come la latenza mediana o il 95° percentile delle durate.
+\end{itemize}
+
 Prometheus offre diversi vantaggi:
 \begin{itemize}
     \item conserva le metriche in un database ottimizzato per le serie temporali, permettendo query efficienti;
@@ -238,4 +254,40 @@ Prometheus offre diversi vantaggi:
     \item può generare regole di alerting, ad esempio inviando notifiche quando una metrica supera una certa soglia o quando un servizio non risponde più;
     \item si integra facilmente con strumenti di visualizzazione come Grafana, che permette di trasformare i dati raccolti in dashboard interattive.
 \end{itemize}
+
+\subsection{Grafana}
+\label{sec:grafana}
+
+Grafana è un’applicazione web open-source per analisi e visualizzazione di metriche, log e tracce da molteplici sorgenti dati. Consente di costruire dashboard interattive e condivisibili tramite un sistema di datasource (es. Prometheus, InfluxDB, Elasticsearch, SQL).
+Serve a monitorare sistemi e applicazioni trasformando i dati (tipicamente serie temporali) in grafici, tabelle, gauge e heatmap; permette inoltre alerting, esplorazione ad-hoc e condivisione di dashboard.
+
+
+Il funzionamento di Grafana si articola in alcuni passaggi fondamentali:
+
+\begin{itemize}
+    \item configurazione di una sorgente dati (ad esempio Prometheus);
+    \item creazione di una dashboard, suddivisa in pannelli;
+    \item ogni pannello contiene una o più query verso la sorgente dati e una relativa visualizzazione (grafico, tabella, gauge, ecc.);
+    \item possibilità di utilizzare variabili di dashboard per filtrare i dati dinamicamente (ad esempio per DAG, task o host specifici);
+    \item personalizzazione dei pannelli con legende, soglie e formattazioni per facilitare l’interpretazione.
+\end{itemize}
+Grafana ha un’integrazione nativa con Prometheus: una volta aggiunto come data source, Grafana può eseguire query direttamente tramite PromQL e trasformare i risultati in visualizzazioni interattive. Questo legame è uno dei motivi principali per cui Prometheus e Grafana vengono spesso adottati insieme: Prometheus si occupa della raccolta e conservazione delle metriche, mentre Grafana ne gestisce la presentazione e l’esplorazione.
+Il linguaggio di interrogazione di Prometheus è PromQL (Prometheus Query Language), appositamente concepito per l’analisi delle serie temporali. Permette di estrarre valori istantanei (instant vector) e intervalli temporali (range vector), ed include funzioni come rate(), nonché operatori aritmetici e aggregati, utili per calcolare medie, percentili e confronti tra metriche. In Grafana, le query scritte in PromQL alimentano i pannelli, consentendo di trasformare dati grezzi in visualizzazioni significative.
+
+
+Un esempio di query PromQL potrebbe essere:
+\begin{verbatim}
+    rate(node_disk_written_bytes_total{job="integrations/macos-node", device!=""}[5m])
+\end{verbatim}
+
+Questa query calcola la velocità di scrittura su disco in byte al secondo negli ultimi 5 minuti, filtrando per il job specifico e ignorando i dispositivi vuoti. Il risultato può essere visualizzato in un grafico a linee o in un gauge, a seconda delle preferenze dell'utente.
+La funzione rate() in PromQL calcola la velocità media di incremento al secondo di una metrica di tipo counter, valutata su un intervallo temporale specificato (es. ultimi 5 minuti).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/rate-function.png}
+    \caption{Esempio di visualizzazione di una query PromQL in Grafana che mostra la velocità di scrittura su disco}
+    \label{fig:rate_function_example}
+\end{figure}
+
 
