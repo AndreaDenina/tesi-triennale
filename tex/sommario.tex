@@ -4,7 +4,7 @@
 \addcontentsline{toc}{chapter}{Sommario} % da aggiungere comunque all'indice
 
 L’elaborato descrive l’attività svolta durante il tirocinio curriculare,
-finalizzata alla progettazione e implementazione di una pipeline dati automatizzata per il calcolo delle Community Health Metrics di Wikipedia.
+finalizzato alla progettazione e implementazione di una pipeline dati automatizzata per il calcolo delle Community Health Metrics di Wikipedia.
 Queste metriche costituiscono indicatori fondamentali per valutare lo stato di salute e la vitalità delle comunità online, fornendo uno strumento utile sia per i ricercatori che per i responsabili delle piattaforme collaborative.
 Il lavoro prende avvio da uno script Python monolitico, privo di modularità, di strumenti di schedulazione e di funzionalità di monitoraggio.
 Tale soluzione risultava poco scalabile e difficilmente manutenibile, soprattutto in un contesto in cui i dati da elaborare, i MediaWiki History Dumps, sono caratterizzati da dimensioni elevate e aggiornamenti periodici.
@@ -19,7 +19,7 @@ Per quanto riguarda l’osservabilità, è stato predisposto uno stack di monito
 
 Il risultato finale è una pipeline completamente automatizzata, in grado di elaborare i dump storici di Wikipedia in maniera affidabile e scalabile. Oltre al miglioramento dell’efficienza,
 il sistema offre ora un controllo puntuale delle esecuzioni, con dashboard dedicate che consentono di analizzare sia l'andamento delle task sia l'utilizzo delle risorse.
-Il contributo personale del lavoro si è concentrato sul refactoring del codice esistente, sulla definizione e implementazione dei DAG di Airflow, sulla configurazione dell'infrastruttura containerizzata e sull'integrazione del sistema di monitoraggio.
+Il contributo personale del lavoro si è concentrato sul refactoring del codice esistente, sulla definizione e implementazione del DAG di Airflow, sulla configurazione dell'infrastruttura containerizzata e sull'integrazione del sistema di monitoraggio.
 Il mio contributo si è concluso con il deploy dell’applicazione su un server di Wikimedia,
 dove è ora attiva in produzione. In questo modo il progetto Community Health Metrics può contare su un’infrastruttura moderna e affidabile,
 capace di calcolare automaticamente i dati necessari alle visualizzazioni.

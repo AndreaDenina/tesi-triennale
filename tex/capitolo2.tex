@@ -11,14 +11,14 @@ Le tecnologie possono essere suddivise in tre principali categorie funzionali:
     \item \textbf{Monitoraggio e raccolta delle metriche}: il sistema di osservabilità è stato implementato utilizzando StatsD Exporter, Prometheus e Grafana. Le metriche prodotte da Airflow vengono raccolte, elaborate e visualizzate in tempo reale tramite dashboard interattive, al fine di garantire il corretto funzionamento del sistema e facilitare l'identificazione di anomalie o colli di bottiglia.
 \end{itemize}
 
-Nei paragrafi seguenti, ogni tecnologia verrà descritta singolarmente.
+Nei paragrafi seguenti, ogni tecnologia viene descritta singolarmente.
 
 
 
 \section{Docker}
 \label{sec:docker}
 Docker è una piattaforma open-source che consente di creare, distribuire ed eseguire applicazioni all'interno di pacchetti detti container. È importante notare che quando si parla di Docker, di solito ci si riferisce a Docker Engine, il software che ospita i container. Docker utilizza la virtualizzazione a livello di sistema operativo (containerizzazione), in particolare utilizza alcune feature del Kernel Linux per garantire l’isolamento e il controllo dei pacchetti. Alcuni esempi di strumenti del Kernel che vengono utilizzati sono i cgroup e i namespace. I cgroups (control groups) sono una funzionalità del kernel linux che permette di limitare, monitorare e assegnare le risorse del sistema ai diversi processi in esecuzione. In questo modo, ogni container può essere configurato per utilizzare solo una certa quantità di risorse, evitando che un singolo container possa consumare tutte le risorse dell’host a discapito degli altri.
-I namespace, invece, sono un meccanismo che isola la visione che ha un’applicazione delle risorse di sistema. Grazie ai namespace, ogni container vede solo i processi, le interfacce di rete, i punti di mount e le variabili d’ambiente che gli sono stati assegnati, come se fosse l'unico sistema attivo sulla macchina. Questo garantisce un elevato livello di isolamento rispetto agli altri container e al sistema operativo. Questo approccio, basato sulla containerizzazione \ref{fig:docker_containerization}, rende i container molto più leggeri (nell’ordine di megabyte, contro i gigabyte di molte VM)[IBM docker] e più rapidi da avviare rispetto alle macchine virtuali tradizionali. L’efficienza ottenuta consente di eseguire molti più container sullo stesso hardware rispetto alle VM e di rendere lo sviluppo e il deployment delle applicazioni più agili e flessibili.
+I namespace, invece, sono un meccanismo che isola la visione che ha un’applicazione delle risorse di sistema. Grazie ai namespace, ogni container vede solo i processi, le interfacce di rete, i punti di mount e le variabili d’ambiente che gli sono stati assegnati, come se fosse l'unico sistema attivo sulla macchina. Questo garantisce un elevato livello di isolamento rispetto agli altri container e al sistema operativo. Questo approccio, basato sulla containerizzazione (Figura \ref{fig:docker_containerization}), rende i container molto più leggeri (nell’ordine di megabyte, contro i gigabyte di molte VM)[IBM docker] e più rapidi da avviare rispetto alle macchine virtuali tradizionali. L’efficienza ottenuta consente di eseguire molti più container sullo stesso hardware rispetto alle VM e di rendere lo sviluppo e il deployment delle applicazioni più agili e flessibili.
 
 \begin{figure}[h]
     \centering
@@ -163,7 +163,7 @@ Tra questi i principali sono:
     \label{fig:task_lifecycle}
 \end{figure}
 
-Come si può vedere in figura \ref{fig:task_lifecycle}, l'obiettivo ideale è che una task attraversi lo stato da none a success, passando per scheduled, queued e running. Per impostazione predefinita, una task viene eseguita solo se tutte le sue upstream (le task che la precedono nel flusso logico) sono completate con successo, ma Airflow offre anche strumenti avanzati di controllo del flusso (branching, trigger rules, ecc.).
+Come si può vedere in Figura \ref{fig:task_lifecycle}, l'obiettivo ideale è che una task attraversi lo stato da none a success, passando per scheduled, queued e running. Per impostazione predefinita, una task viene eseguita solo se tutte le sue upstream (le task che la precedono nel flusso logico) sono completate con successo, ma Airflow offre anche strumenti avanzati di controllo del flusso (branching, trigger rules, ecc.).
 
 
 \subsection{Architettura}
@@ -184,7 +184,7 @@ L'architettura di Airflow è formata da diversi componenti. Un'installazione min
     \label{fig:airflow_minimal_deployment}
 \end{figure}
 
-In figura ~\ref{fig:airflow_minimal_deployment} viene mostrata la configurazione più semplice di Airflow, in cui tutti i componenti principali (scheduler, webserver e database) vengono eseguiti sulla stessa macchina. In questo scenario si utilizza solitamente il LocalExecutor: scheduler e worker condividono lo stesso processo Python e i file dei DAG vengono letti direttamente dal filesystem locale. Anche l’interfaccia web (webserver) viene eseguita sulla stessa macchina. È importante far notare la differenza tra executor e worker: 
+In Figura ~\ref{fig:airflow_minimal_deployment} viene mostrata la configurazione più semplice di Airflow, in cui tutti i componenti principali (scheduler, webserver e database) vengono eseguiti sulla stessa macchina. In questo scenario si utilizza solitamente il LocalExecutor: scheduler e worker condividono lo stesso processo Python e i file dei DAG vengono letti direttamente dal filesystem locale. Anche l’interfaccia web (webserver) viene eseguita sulla stessa macchina. È importante far notare la differenza tra executor e worker: 
 L’executor in Airflow determina la modalità e la logica con cui i task vengono messi in esecuzione, gestendo l’assegnazione dei task ai worker.
 Il worker è invece il processo che riceve i task dall’executor e li esegue.
 
@@ -210,15 +210,15 @@ Nel mio progetto, il monitoring della pipeline dati è stato realizzato tramite 
 \subsection{StatsD e StatsD Exporter}
 \label{sec:statsd}
 
-\textbf{StatsD} è un \textit{network daemon} sviluppato da Etsy, progettato per raccogliere metriche inviate dalle applicazioni tramite protocolli leggeri come UDP o TCP. Ogni metrica è rappresentata dalla sintassi:
+StatsD è un network daemon sviluppato da Etsy, progettato per raccogliere metriche inviate dalle applicazioni tramite protocolli leggeri come UDP o TCP. Ogni metrica è rappresentata dalla sintassi:
 
 \begin{verbatim}
 <nome_metrica>:<valore>|<tipo>
 \end{verbatim}
 
-dove il nome, espresso in notazione a punti (es. \texttt{dag.task.duration}), identifica la metrica, il valore è numerico e il tipo può indicare un contatore (\texttt{c}), un gauge (\texttt{g}), un timer (\texttt{ms}), ecc. Airflow utilizza questo formato per esportare automaticamente informazioni come l’avvio e il completamento delle task, la durata delle esecuzioni e l’uso delle risorse, inviandole in modo asincrono e a basso overhead.
+dove il nome, espresso in notazione a punti (es. dag.task.duration), identifica la metrica, il valore è numerico e il tipo può indicare un contatore (c), un gauge (g), un timer (ms), ecc. Airflow utilizza questo formato per esportare automaticamente informazioni come l’avvio e il completamento delle task, la durata delle esecuzioni e l’uso delle risorse, inviandole in modo asincrono e a basso overhead.
 
-Poiché il formato StatsD non è compatibile con Prometheus, entra in gioco lo \textbf{StatsD Exporter}, un servizio che traduce le metriche ricevute in serie temporali etichettate secondo lo standard Prometheus. La conversione è definita tramite un file di mapping in YAML, che permette di trasformare un nome di metrica come:
+Poiché il formato StatsD non è compatibile con Prometheus, entra in gioco lo StatsD Exporter, un servizio che traduce le metriche ricevute in serie temporali etichettate secondo lo standard Prometheus. La conversione è definita tramite un file di mapping in YAML, che permette di trasformare un nome di metrica come:
 
 \begin{verbatim}
 task.cpu_usage.vital_signs.process_dump:30|g
@@ -230,7 +230,7 @@ nella forma Prometheus:
 cpu_usage{dag="vital_signs", task="process_dump"} 30
 \end{verbatim}
 
-In questo modo le metriche diventano interrogabili con PromQL e possono essere visualizzate in Grafana. Dal punto di vista infrastrutturale, StatsD Exporter è stato configurato come servizio dedicato in \texttt{docker-compose.yml}, in ascolto sulla porta \texttt{9125} per ricevere i pacchetti StatsD da Airflow e sulla porta \texttt{9102} per esporre le metriche convertite a Prometheus.
+In questo modo le metriche diventano interrogabili con PromQL e possono essere visualizzate in Grafana. Dal punto di vista infrastrutturale, StatsD Exporter è stato configurato come servizio dedicato in docker-compose.yml, in ascolto sulla porta 9125 per ricevere i pacchetti StatsD da Airflow e sulla porta 9102 per esporre le metriche convertite a Prometheus.
 
 \subsection{Prometheus}
 \label{sec:prometheus}
