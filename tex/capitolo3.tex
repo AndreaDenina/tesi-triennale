@@ -12,14 +12,14 @@ Nel corso del capitolo verranno quindi analizzati:
     \item la definizione del DAG e delle task che lo compongono, con l’illustrazione delle modifiche apportate agli script originari per adattarli al nuovo contesto;
     \item la containerizzazione del sistema, descrivendo nel dettaglio il Dockerfile e il file docker-compose.yml;
     \item l’infrastruttura di monitoraggio, con le configurazioni di StatsD, Prometheus e Grafana;
-    \item l’integrazione dei diversi componenti e le modalità di deploy dell’applicazione.
+    \item il deployment della pipeline su un server di produzione.
 \end{itemize}
 
 In questo modo si vuole mostrare il percorso seguito per passare da una soluzione monolitica e difficile da mantenere a un’infrastruttura completa, affidabile, automatizzata e osservabile.
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=\textwidth]{img/vital-signs-pipeline.drawio.png}
+    \includegraphics[width=0.6\textwidth]{img/vital-signs-pipeline.drawio.png}
     \caption{Schema logico dell'architettura del sistema}
     \label{fig:architettura_sistema}
 \end{figure}
@@ -33,9 +33,8 @@ Nel progetto ho definito il DAG vital\_signs, contenuto nel file vital\_signs\_d
 
 Vediamo ora come è stato definito il DAG, le sue caratteristiche principali e come sono stati adattati gli script esistenti per funzionare in questo nuovo contesto.
 
-\newpage
 
-\begin{lstlisting}[language=Python, caption=Definizione del DAG in Airflow, label=lst:dag_definition]
+\begin{lstlisting}[language=Python, caption=Definizione del DAG in Airflow, label=lst:dag_definition, basicstyle=\scriptsize\ttfamily]
 # Import delle librerie necessarie e funzioni di supporto
 with DAG(
     dag_id='vital_signs',
@@ -87,7 +86,7 @@ L’intera catena è vincolata da dipendenze esplicite (\textgreater \textgreate
 In questo modo il DAG rimane leggibile e modulare: ogni task incapsula un passaggio ben definito e l’orchestrazione di Airflow garantisce una progressione deterministica dall’ingestione dei dump fino alla produzione dei vital signs.
 
 
-\begin{lstlisting}[language=Python, caption={Esempio di definizione di una task e dipendenze del DAG}, label=lst:dag_tasks]
+\begin{lstlisting}[language=Python, caption={Esempio di definizione di una task e dipendenze del DAG}, label=lst:dag_tasks, basicstyle=\scriptsize\ttfamily]
 start = EmptyOperator(task_id='start', dag=dag)
 end = EmptyOperator(task_id='end', dag=dag)
 
@@ -494,5 +493,123 @@ Il servizio è stato utilizzato unicamente nella fase di sviluppo, con lo scopo 
 
 \section{Metriche e monitoraggio}
 \label{sec:implmonitoring}
+
+
+Il sistema di monitoraggio della pipeline è progettato per raccogliere, trasformare, archiviare e visualizzare le metriche generate da Airflow.  
+Ogni componente è connesso al successivo in una catena di elaborazione che va dall’emissione delle metriche fino alla loro rappresentazione grafica nelle dashboard.  
+
+\paragraph{Metriche generate da Airflow}
+Airflow produce automaticamente un insieme di metriche in formato \texttt{StatsD}, riguardanti lo stato e le performance dei DAG e delle task.  
+Tra le numerose metriche disponibili, ho scelto di monitorare in particolare:
+\begin{itemize}
+    \item numero di task iniziate e completate (\texttt{ti.start}, \texttt{ti.finish} per ciascun \texttt{dag\_id}/\texttt{task\_id});
+    \item stato di esecuzione delle task (successo o fallimento);
+    \item durata delle task (\texttt{dag.<dag\_id>.<task\_id>.duration});
+    \item utilizzo medio di CPU e memoria da parte delle task (\texttt{task.cpu\_usage}, \texttt{task.mem\_usage});
+\end{itemize}
+Queste metriche sono inviate da Airflow al servizio \texttt{statsd-exporter} sulla porta \texttt{9125}:
+
+\begin{table}[h]
+\centering
+\scriptsize
+\begin{tabular}{|l|l|l|p{7cm}|}
+\hline
+\textbf{Nome - StatsD} & \textbf{Nome - Prometheus} & \textbf{Tipo} & \textbf{Descrizione} \\
+\hline
+\texttt{ti.start.<dag\_id>.<task\_id>} & \texttt{ti\_start} & Counter & Numero di task iniziate in un dato DAG. \\
+\texttt{ti.finish.<dag\_id>.<task\_id>.<state>} & \texttt{ti\_finish} & Counter & Numero di task completate in un dato DAG, etichettate per stato (success, failed, ecc.). \\
+\texttt{task.cpu\_usage.<dag\_id>.<task\_id>} & \texttt{cpu\_usage} & Gauge & Percentuale di CPU utilizzata da una task. \\
+\texttt{task.mem\_usage.<dag\_id>.<task\_id>} & \texttt{mem\_usage} & Gauge & Percentuale di memoria utilizzata da una task. \\
+\texttt{dag.<dag\_id>.<task\_id>.duration} & \texttt{task\_duration} & Histogram & Millisecondi necessari per eseguire una certa task in un dato DAG. \\
+\hline
+\end{tabular}
+\caption{Metriche raccolte e trasformate da StatsD a Prometheus con relativo tipo e descrizione.}
+\label{tab:metrics_monitored}
+\end{table}
+
+
+
+\paragraph{Mapping con statsd-exporter}
+Il servizio \texttt{statsd-exporter} riceve i pacchetti StatsD e li converte in metriche compatibili con Prometheus.  
+Il file di configurazione \texttt{statsd.yaml} definisce il mapping tra i nomi in notazione puntata (\emph{dot notation}) e metriche con etichette Prometheus.  
+Ad esempio, la metrica \texttt{ti.finish.my\_dag.my\_task.success} viene trasformata in:
+\begin{quote}\ttfamily
+ti\_finish\{dag\_id="my\_dag", task\_id="my\_task", state="success"\} 1
+\end{quote}
+L’output delle metriche trasformate è esposto sull’endpoint HTTP \texttt{/metrics} della porta \texttt{9102}.  
+Un esempio di output è il seguente:
+\begin{quote}\ttfamily
+\# HELP ti\_finish Numero di Task completate in un dato DAG \\
+\# TYPE ti\_finish counter \\
+ti\_finish\{dag\_id="vital\_signs", task\_id="calc\_vs", state="success"\} 42
+\end{quote}
+
+\paragraph{Prometheus come storage}
+Prometheus è configurato per effettuare lo \emph{scraping} dell’endpoint \texttt{statsd-exporter:9102/metrics} ogni 5 secondi.  
+Il file \texttt{prometheus.yml} definisce lo \emph{scrape job} e l’intervallo di campionamento.  
+In questo progetto Prometheus non è stato utilizzato per l’alerting, ma esclusivamente come:
+\begin{itemize}
+    \item \emph{time series database};
+    \item \emph{data source} per Grafana.
+\end{itemize}
+In tal modo le metriche generate da Airflow vengono archiviate e rese interrogabili attraverso PromQL.
+
+\paragraph{Grafana: dashboard e datasource}
+Grafana è stato configurato con provisioning automatico di:
+\begin{itemize}
+    \item \texttt{datasource}, che definisce Prometheus come sorgente dati (URL: \texttt{http://prometheus:9090});
+    \item \texttt{dashboard}, salvate in formato JSON e caricate all’avvio nel volume \texttt{./monitoring/grafana/dashboards}.
+\end{itemize}
+Questa configurazione permette di rendere riproducibile e portabile l’intero sistema di visualizzazione, evitando modifiche manuali tramite l’interfaccia web.
+
+Queste sono le query PromQL utilizzate per costruire le dashboard:
+
+\begin{itemize}
+    \item \texttt{avg by(dag\_id) (cpu\_usage\{dag\_id="vital\_signs"\})} e \texttt{avg by(dag\_id) (mem\_usage\{dag\_id="vital\_signs"\})}: calcolano rispettivamente l’utilizzo medio di CPU e memoria per il DAG \texttt{vital\_signs}, permettendo di monitorare il consumo delle risorse computazionali.
+    
+    \item \texttt{sum(ti\_finish\{dag\_id="vital\_signs", state="failed"\})}, \texttt{sum(ti\_finish\{dag\_id="vital\_signs", state="success"\})} e \texttt{sum(ti\_start\{dag\_id="vital\_signs"\})}: conteggiano rispettivamente il numero di task fallite, completate con successo e avviate. Questi valori vengono combinati in una visualizzazione che mostra la distribuzione degli esiti delle task.
+    
+    \item \texttt{up}: metrica di servizio che indica se i target monitorati da Prometheus sono attivi e raggiungibili. Nella dashboard è utilizzata per fornire un’indicazione sullo stato del sistema.
+    
+    \item \texttt{task\_duration\_sum\{dag\_id="vital\_signs", task\_id="\$task"\} / task\_duration\_count\{dag\_id="vital\_signs", task\_id="\$task"\}}: calcola la durata media di esecuzione di una specifica task. La variabile globale \texttt{\$task} contiene tutti i valori di \texttt{task\_id} ed è impostabile tramite un menu a tendina nella dashboard, consentendo di filtrare la visualizzazione in base alla task selezionata.
+    
+    \item \texttt{histogram\_quantile(0.95, sum by(le)(rate(task\_duration\_bucket[\$\_\_rate\_interval])))}  
+    \texttt{histogram\_quantile(0.90, sum by(le)(rate(task\_duration\_bucket[\$\_\_rate\_interval])))}  
+    \texttt{histogram\_quantile(0.50, sum by(le)(rate(task\_duration\_bucket[\$\_\_rate\_interval])))}: stimano rispettivamente i percentili 95, 90 e 50 (mediana) della distribuzione dei tempi di esecuzione delle task. Queste query permettono di analizzare in dettaglio la distribuzione e individuare anomalie o possibili colli di bottiglia.
+\end{itemize}
+
+Attraverso queste query è stato possibile costruire dashboard che evidenziano l’andamento delle esecuzioni, lo stato di salute del sistema e l’utilizzo delle risorse, fornendo una panoramica completa delle prestazioni della pipeline.
+
+
+
+\paragraph{Connessione tra i componenti}
+L’intero sistema segue un flusso lineare:
+\begin{enumerate}
+    \item Airflow genera metriche in formato StatsD;
+    \item \texttt{statsd-exporter} le riceve sulla porta \texttt{9125}, le trasforma e le espone in formato Prometheus sulla porta \texttt{9102};
+    \item Prometheus esegue lo scraping periodico dell’endpoint, salvando le serie temporali nel proprio database;
+    \item Grafana interroga Prometheus come data source e visualizza le metriche nelle dashboard configurate.
+\end{enumerate}
+Questa integrazione assicura una completa osservabilità della pipeline.
+
+\section{Deployment}
+\label{sec:impldeployment}
+
+La pipeline è attualmente in esecuzione su un server Wikimedia, lo stesso che ospita 
+i MediaWiki History Dumps. Tutti i componenti (Airflow, PostgreSQL, Prometheus, 
+Grafana e applicazione Dash) sono containerizzati e orchestrati tramite 
+\texttt{docker-compose}, consentendo di avviare l’intero sistema in modo coerente 
+e riproducibile. 
+
+In questo ambiente di produzione l'esecuzione del DAG  è programmata 
+con cadenza mensile, in linea con il rilascio dei dump. 
+Questo garantisce che le metriche vengano aggiornate regolarmente senza 
+necessità di interventi manuali. 
+
+Al momento l’accesso al sistema è riservato e avviene esclusivamente tramite 
+connessione \texttt{SSH} al server, senza un’interfaccia pubblica né una gestione 
+multi-utente. Nonostante questa limitazione, la pipeline opera a tutti gli effetti 
+in un contesto produttivo, elaborando i dati e rendendo disponibili i 
+risultati per le successive analisi e visualizzazioni.
 
 \clearpage
