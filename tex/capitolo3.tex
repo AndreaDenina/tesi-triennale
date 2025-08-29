@@ -10,7 +10,7 @@ Nel corso del capitolo verranno quindi analizzati:
 
 \begin{itemize}
     \item la definizione del DAG e delle task che lo compongono, con l’illustrazione delle modifiche apportate agli script originari per adattarli al nuovo contesto;
-    \item la containerizzazione del sistema, descrivendo nel dettaglio il Dockerfile e il file docker-compose.yml;
+    \item la containerizzazione del sistema, descrivendo nel dettaglio il \texttt{Dockerfile} e il file \texttt{docker-compose.yml};
     \item l’infrastruttura di monitoraggio, con le configurazioni di StatsD, Prometheus e Grafana;
     \item il deployment della pipeline su un server di produzione.
 \end{itemize}
@@ -29,7 +29,7 @@ In questo modo si vuole mostrare il percorso seguito per passare da una soluzion
 
 Come introdotto nella Sezione~\ref{sec:airflow}, il Directed Acyclic Graph (DAG) è lo strumento con cui Apache Airflow permette di modellare un workflow come un insieme di task con relazioni di dipendenza.
 
-Nel progetto ho definito il DAG vital\_signs, contenuto nel file vital\_signs\_dag.py all’interno della cartella dags/. Questo DAG ha il compito di processare i dati provenienti dai MediaWiki History Dumps, eseguendo diversi calcoli su di essi e popolando progressivamente due database distinti: prima quello degli editors, che raccoglie le metriche derivate dai dump, e successivamente quello web, in cui vengono calcolati e salvati i vital signs a partire dalle metriche estratte.
+Nel progetto ho definito il DAG \texttt{vital\_signs}, contenuto nel file \texttt{vital\_signs\_dag.py} all’interno della cartella \texttt{dags/}. Questo DAG ha il compito di processare i dati provenienti dai MediaWiki History Dumps, eseguendo diversi calcoli su di essi e popolando progressivamente due database distinti: prima quello degli editors, che raccoglie le metriche derivate dai dump, e successivamente quello web, in cui vengono calcolati e salvati i vital signs a partire dalle metriche estratte.
 
 Vediamo ora come è stato definito il DAG, le sue caratteristiche principali e come sono stati adattati gli script esistenti per funzionare in questo nuovo contesto.
 
@@ -54,35 +54,36 @@ with DAG(
     # Definizione dei task
 \end{lstlisting}
 
-Il codice in lst. \ref{lst:dag_definition} mostra la definizione del DAG vital\_signs e i suoi parametri principali.
+Il codice in lst. \ref{lst:dag_definition} mostra la definizione del DAG \texttt{vital\_signs} e i suoi parametri principali.
 
 In particolare:
 
 \begin{itemize}
-    \item \textbf{dag\_id}: assegna un identificativo univoco al DAG, in questo caso vital\_signs.
-    \item \textbf{default\_args}: raccoglie i parametri comuni a tutte le task, come l'owner, la data di inizio, il numero di retry e il ritardo tra un tentativo e l'altro.
-    \item \textbf{start\_date}: definisce la data a partire dalla quale Airflow può schedulare le esecuzioni del DAG.
-    \item \textbf{schedule\_interval}: stabilisce la frequenza di esecuzione. È stata scelta un'espressione cron che fa partire il DAG ogni 10 del mese, in linea con le tempistiche di pubblicazione dei dump.
-    \item \textbf{catchup}: impostato a False, evita che al primo avvio il DAG tenti di recuperare retroattivamente tutte le esecuzioni mancate dal start\_date.
-    \item \textbf{max\_active\_runs}: limita il numero di esecuzioni contemporanee del DAG a uno, per prevenire conflitti nell'accesso ai dati.
+    \item \texttt{dag\_id}: assegna un identificativo univoco al DAG, in questo caso \texttt{vital\_signs}.
+    \item \texttt{default\_args}: raccoglie i parametri comuni a tutte le task, come l'owner, la data di inizio, il numero di retry e il ritardo tra un tentativo e l'altro.
+    \item \texttt{start\_date}: definisce la data a partire dalla quale Airflow può schedulare le esecuzioni del DAG.
+    \item \texttt{schedule\_interval}: stabilisce la frequenza di esecuzione. È stata scelta un'espressione cron che fa partire il DAG ogni 10 del mese, in linea con le tempistiche di pubblicazione dei dump.
+    \item \texttt{catchup}: impostato a \texttt{False}, evita che al primo avvio il DAG tenti di recuperare retroattivamente tutte le esecuzioni mancate dal \texttt{start\_date}.
+    \item \texttt{max\_active\_runs}: limita il numero di esecuzioni contemporanee del DAG a uno, per prevenire conflitti nell'accesso ai dati.
 \end{itemize}
 
 
 \subsection{Struttura delle task}
 \label{subsec:struttura_task}
 
-Nel DAG vital\_signs le task sono tutte implementate come PythonOperator,
+Nel DAG \texttt{vital\_signs} le task sono tutte implementate come \texttt{PythonOperator},
 quindi ciascuna invoca uno script Python specifico.
-La pipeline è delimitata da due sentinelle logiche, start ed end (entrambi EmptyOperator), fra le quali si sviluppa il flusso di elaborazione.
-Subito dopo l’avvio, la task create\_dbs prepara l’ambiente applicativo creando e inizializzando le tabelle dei due database coinvolti (editors e web).
-A questo punto il DAG si ramifica per lingua (in base a wikilanguagecodes) e per ogni edizione linguistica vengono eseguiti in sequenza tre step:
-\textless code\textgreater\_process\_dump per estrarre e caricare le metriche dai MediaWiki History Dumps nel DB degli editor,
-\textless code\textgreater\_calc\_flags per calcolare i flag/profili degli editor,
-\textless code\textgreater\_calc\_streaks per derivare le streak di attività.
+La pipeline è delimitata da due sentinelle logiche, \texttt{start} ed \texttt{end} (entrambi \texttt{EmptyOperator}), fra le quali si sviluppa il flusso di elaborazione.
+Subito dopo l’avvio, la task \texttt{create\_dbs} prepara l’ambiente applicativo creando e inizializzando le tabelle dei due database coinvolti (editors e web).
+A questo punto il DAG si ramifica per lingua (in base a \texttt{wikilanguagecodes}) e per ogni edizione linguistica vengono eseguiti in sequenza tre step:
+\texttt{<code>\_process\_dump} per estrarre e caricare le metriche dai MediaWiki History Dumps nel DB degli editor,
+\texttt{<code>\_calc\_flags} per calcolare i flag/profili degli editor,
+\texttt{<code>\_calc\_streaks} per derivare le streak di attività.
 
-Terminata la fase per lingua sul database vital\_signs\_editors, una fase cross wiki (calc\_primary\_language) calcola la lingua primaria degli utenti a partire dalle metriche calcolate nelle precedenti fasi.
-Infine, avviene una seconda ramificazione per lingua dove, con \textless code\textgreater\_calc\_vs, si computano i vital signs e si popolano le tabelle del database  vital\_signs\_web a partire dalle metriche già consolidate.
-L’intera catena è vincolata da dipendenze esplicite (\textgreater \textgreater) che assicurano l’ordine corretto; inoltre, ogni task utilizza callback di logging di esito (on\_success\_callback, on\_failure\_callback) per tracciare in modo uniforme completamenti e fallimenti delle esecuzioni.
+Terminata la fase per lingua sul database \texttt{vital\_signs\_editors}, una fase cross-wiki (\texttt{calc\_primary\_language})
+ calcola la lingua primaria degli utenti a partire dalle metriche calcolate nelle precedenti fasi.
+Infine, avviene una seconda ramificazione per lingua dove, con \texttt{code\_calc\_vs}, si computano i vital signs e si popolano le tabelle del database \texttt{vital\_signs\_web} a partire dalle metriche già consolidate.
+L’intera catena è vincolata da dipendenze esplicite (\texttt{>>}) che assicurano l’ordine corretto; inoltre, ogni task utilizza callback di logging di esito (\texttt{on\_success\_callback}, \texttt{on\_failure\_callback}) per tracciare in modo uniforme completamenti e fallimenti delle esecuzioni.
 In questo modo il DAG rimane leggibile e modulare: ogni task incapsula un passaggio ben definito e l’orchestrazione di Airflow garantisce una progressione deterministica dall’ingestione dei dump fino alla produzione dei vital signs.
 
 
@@ -105,12 +106,12 @@ start >> create_dbs_task >> editors_db_group \
       >> primary_language_task >> web_db_group >> end
 \end{lstlisting}
 
-Nel codice in lst. \ref{lst:dag_tasks} è mostrato un esempio di definizione di una task (create\_dbs) e la struttura delle dipendenze del DAG.
-Come si può notare la task chiama la funzione create\_db, definita in un file nella cartella scripts/ e importata come una libreria.
-Il parametro op\_args permette di passare argomenti alla funzione, in questo caso la lista delle lingue da processare.
+Nel codice in lst. \ref{lst:dag_tasks} è mostrato un esempio di definizione di una task (\texttt{create\_dbs}) e la struttura delle dipendenze del DAG.
+Come si può notare la task chiama la funzione \texttt{create\_db}, definita in un file nella cartella \texttt{scripts/} e importata come una libreria.
+Il parametro \texttt{op\_args} permette di passare argomenti alla funzione, in questo caso la lista delle lingue da processare.
 \paragraph{}
 Dopo aver descritto la struttura complessiva del DAG, è utile analizzare nel dettaglio le singole task che lo compongono.
-Per rendere la pipeline più modulare e leggibile, lo script originario è stato suddiviso in sei parti principali, ciascuna delle quali è associata a una specifica fase del flusso e implementata come task indipendente. In questo modo ogni passaggio è incapsulato in una funzione python separata ed eseguito tramite un PythonOperator.
+Per rendere la pipeline più modulare e leggibile, lo script originario è stato suddiviso in sei parti principali, ciascuna delle quali è associata a una specifica fase del flusso e implementata come task indipendente. In questo modo ogni passaggio è incapsulato in una funzione python separata ed eseguito tramite un \texttt{PythonOperator}.
 
 Nelle sottosezioni che seguono verranno illustrate le task una ad una, evidenziandone lo scopo e la logica implementativa.
 Infine, verrà presentato un esempio di refactoring relativo al calcolo della lingua primaria degli editor, dove l’utilizzo della libreria Pandas ha permesso di migliorare leggibilità ed efficienza del codice.
@@ -118,7 +119,7 @@ Infine, verrà presentato un esempio di refactoring relativo al calcolo della li
 \label{subsec:create_dbs}
 
 La prima task del DAG è \texttt{create\_dbs}, responsabile dell’inizializzazione dei database utilizzati dalla pipeline. 
-Si tratta di un passo preliminare che assicura la presenza e la corretta struttura delle tabelle necessarie sia per il database degli \emph{editors} sia per quello dei \emph{vital signs}. 
+Si tratta di un passo preliminare che assicura la presenza e la corretta struttura delle tabelle necessarie sia per il database degli editors sia per quello dei vital signs. 
 La task è implementata come \texttt{PythonOperator} e chiama la funzione \texttt{create\_db}, definita in un file (\texttt{create\_db.py}) nella cartella \texttt{scripts/}.
 
 Lo script utilizza la libreria \texttt{SQLAlchemy} per gestire le connessioni ai due database (tramite le stringhe di connessione definite in \texttt{config.py}). 
@@ -133,7 +134,7 @@ Infine, nel database \texttt{vital\_signs\_web} viene inizializzata la tabella \
 
 Il codice seguente mostra le definizioni SQL semplificate delle tre tabelle principali:
 
-\newpage 
+
 
 \begin{lstlisting}[language=SQL, caption={Definizione delle tabelle create dalla task create\_dbs}, label=lst:create_dbs_tables, basicstyle=\scriptsize\ttfamily]
 -- Tabella <langcode>wiki_editors
@@ -199,7 +200,7 @@ CREATE TABLE IF NOT EXISTS vital_signs_metrics (
 \end{lstlisting}
 
 In sintesi, le prime due tabelle costituiscono il livello “di base” per ciascuna lingua, registrando rispettivamente i dati anagrafici degli editor e le metriche puntuali calcolate dai dump. 
-La terza tabella rappresenta invece il livello “aggregato” e contiene i \emph{vital signs}, calcolati a partire dalle metriche di base e organizzati in modo idempotente grazie a una chiave primaria composta che impedisce inserimenti duplicati.  
+La terza tabella rappresenta invece il livello “aggregato” e contiene i vital sign, calcolati a partire dalle metriche di base e organizzati in modo idempotente grazie a una chiave primaria composta che impedisce inserimenti duplicati.  
 
 Al termine dell’esecuzione di questa task l’ambiente risulta pronto per accogliere i dati estratti dai dump e per memorizzare i risultati delle analisi successive.
 
@@ -217,8 +218,8 @@ Questa impostazione consente al DAG di scalare su più comunità linguistiche se
 \hline
 \textbf{Idx} & \textbf{Variabile} & \textbf{Tipo} & \textbf{Descrizione} \\
 \hline
-1  & \texttt{event\_entity} & string & Entità dell’evento: \emph{revision}, \emph{user} o \emph{page}. \\
-2  & \texttt{event\_type} & string & Tipo di evento: \emph{create}, \emph{move}, \emph{delete}, ecc. \\
+1  & \texttt{event\_entity} & string & Entità dell'evento: revision, user o page. \\
+2  & \texttt{event\_type} & string & Tipo di evento: create, move, delete, ecc. \\
 3  & \texttt{event\_timestamp} & string & Timestamp in cui si è verificato l’evento. \\
 5  & \texttt{event\_user\_id} & bigint & ID dell’utente che ha generato l’evento (null se anonimo o revision-deleted). \\
 7  & \texttt{event\_user\_text} & string & Username corrente dell’utente (IP se anonimo). \\
@@ -259,8 +260,7 @@ I risultati vengono infine inseriti in due tabelle distinte:
 \end{itemize}
 
 Tutti gli inserimenti avvengono in modalità idempotente (\texttt{ON CONFLICT DO NOTHING} o \texttt{DO UPDATE}), in modo da evitare duplicazioni quando la pipeline viene rieseguita sugli stessi dump. 
-In questo modo la task produce un dataset consistente e normalizzato, da cui le fasi successive del DAG (\texttt{calc\_flags}, \texttt{calc\_streaks}, \texttt{calc\_vs}) possono derivare i \emph{vital signs}.
-
+In questo modo la task produce un dataset consistente e normalizzato, da cui le fasi successive del DAG (\texttt{calc\_flags}, \texttt{calc\_streaks}, \texttt{calc\_vs}) possono derivare i vital signs.
 
 \subsection{Task \textless langcode\textgreater\_calc\_flags}
 \label{subsec:calc_flags}
@@ -270,7 +270,7 @@ e individuare per ciascun utente quello di rango più elevato,
 salvandolo nella tabella degli editors.
 Per ogni edizione linguistica viene generata una task dedicata che prende come input il codice della lingua e utilizza i dati prodotti dalla fase precedente e salvati nel database \texttt{vital\_signs\_editors}.
 
-Lo script associato alla task \texttt{calc\_flags} (\texttt{calculate\_editors\_flag}) si occupa di determinare, per ciascun utente, il flag più rilevante ricevuto durante la sua attività. In un primo passaggio vengono contati i flag presenti tra tutti gli editor, così da costruire un dizionario di supporto. Successivamente è definita una gerarchia di priorità (\emph{flag ranks}) che assegna un valore crescente ai diversi flag: dai più comuni, come \texttt{confirmed}, fino a quelli di maggiore responsabilità, come \texttt{steward} o \texttt{founder}.
+Lo script associato alla task \texttt{calc\_flags} (\texttt{calculate\_editors\_flag}) si occupa di determinare, per ciascun utente, il flag più rilevante ricevuto durante la sua attività. In un primo passaggio vengono contati i flag presenti tra tutti gli editor, così da costruire un dizionario di supporto. Successivamente è definita una gerarchia di priorità (\texttt{flag ranks}) che assegna un valore crescente ai diversi flag: dai più comuni, come \texttt{confirmed}, fino a quelli di maggiore responsabilità, come \texttt{steward} o \texttt{founder}.
 
 Per ogni editor viene quindi valutata la lista dei flag posseduti e viene individuato quello con rango massimo, salvato nel campo \texttt{highest\_flag} della tabella \texttt{wiki\_editors}. Nel caso in cui più flag abbiano lo stesso livello, viene selezionato quello più diffuso all’interno della comunità. Lo script aggiorna inoltre il campo \texttt{highest\_flag\_year\_month}, basandosi sugli eventi di concessione flag (\texttt{granted\_flag}) registrati in \texttt{wiki\_editor\_metrics}, così da associare il flag principale al momento in cui è stato effettivamente ottenuto. Infine, viene gestito il caso specifico degli utenti che hanno ricevuto un flag di tipo \texttt{bot}, aggiornando opportunamente il campo \texttt{bot} nella tabella degli editor.
 
@@ -283,7 +283,7 @@ La task \textless langcode\textgreater\_calc\_streaks ha l’obiettivo di analiz
 
 Lo script associato (\texttt{calculate\_editor\_activity\_streaks}) esegue i seguenti passaggi: parte dai record della tabella \texttt{wiki\_editor\_metrics} relativi alla metrica \texttt{monthly\_edits}, ordinati per utente e mese. Per ciascun editor viene mantenuto un contatore che misura la lunghezza della sequenza di mesi consecutivi attivi. Se i mesi seguono senza interruzioni, il contatore viene incrementato e il valore corrente della streak viene salvato come nuova metrica denominata \texttt{active\_months\_row}. Se invece vengono rilevati mesi mancanti, la streak viene interrotta e il contatore azzerato.
 
-Al termine dell’elaborazione, i risultati vengono inseriti nuovamente nella tabella \texttt{<langcode>wiki\_editor\_metrics}, utilizzando un’operazione di \emph{insert} con clausola \texttt{ON CONFLICT DO NOTHING} per garantire l’idempotenza. In questo modo ogni editor viene arricchito con un indicatore che riflette la sua costanza di partecipazione nel tempo, utile per stimare il livello di stabilità e di continuità della comunità.
+Al termine dell’elaborazione, i risultati vengono inseriti nuovamente nella tabella \texttt{<langcode>wiki\_editor\_metrics}, utilizzando un’operazione di insert con clausola \texttt{ON CONFLICT DO NOTHING} per garantire l’idempotenza. In questo modo ogni editor viene arricchito con un indicatore che riflette la sua costanza di partecipazione nel tempo, utile per stimare il livello di stabilità e di continuità della comunità.
 
 \subsection{Task calc\_primary\_language}
 \label{subsec:calc_primary_language}
@@ -297,12 +297,12 @@ Lo script associato (\texttt{cross\_wiki\_editor\_metrics}) utilizza la libreria
     \item la lingua primaria, individuata come quella in cui l’editor ha effettuato il maggior numero di edit, insieme al corrispondente numero di edit e alle date del primo contributo.
 \end{itemize}
 
-Infine, per ciascun editor i risultati vengono salvati nuovamente in tutte le tabelle \texttt{wiki\_editors}, aggiornando i campi \texttt{primarylang}, \texttt{primary\_ecount}, \texttt{totallangs\_ecount}, \texttt{numberlangs}, \texttt{primary\_year\_month\_first\_edit} e \texttt{primary\_lustrum\_first\_edit}. In questo modo ogni record è arricchito con informazioni coerenti sul ruolo dell’editor all’interno del panorama cross-wiki, fornendo un indicatore utile per le analisi successive sui \emph{vital signs}.
+Infine, per ciascun editor i risultati vengono salvati nuovamente in tutte le tabelle \texttt{wiki\_editors}, aggiornando i campi \texttt{primarylang}, \texttt{primary\_ecount}, \texttt{totallangs\_ecount}, \texttt{numberlangs}, \texttt{primary\_year\_month\_first\_edit} e \texttt{primary\_lustrum\_first\_edit}. In questo modo ogni record è arricchito con informazioni coerenti sul ruolo dell’editor all’interno del panorama cross-wiki, fornendo un indicatore utile per le analisi successive sui vital sign.
 
 \subsection{Task \textless langcode\textgreater\_calc\_vs}
 \label{subsec:calc_vs}
 
-Lo scopo della task \textless langcode\textgreater\_calc\_vs è calcolare e salvare un insieme di indicatori, i cosiddetti \emph{vital signs}, che descrivono lo stato di salute della comunità di una specifica edizione linguistica di Wikipedia. 
+Lo scopo della task \textless langcode\textgreater\_calc\_vs è calcolare e salvare un insieme di indicatori, i cosiddetti vital sign, che descrivono lo stato di salute della comunità di una specifica edizione linguistica di Wikipedia. 
 Questa fase prende i dati già preprocessati nelle tabelle \texttt{wiki\_editors} e \texttt{wiki\_editor\_metrics} e li combina in metriche aggregate su base mensile o annuale, producendo misure riguardanti la retention, la numerosità e distribuzione degli editor attivi, la stabilità e il ricambio generazionale, i profili speciali (technical editor e coordinator), la distribuzione delle flag amministrative e la distinzione fra editor primari e globali. 
 I risultati vengono salvati nella tabella centralizzata \texttt{vital\_signs\_metrics}.
 
@@ -311,21 +311,21 @@ La funzione \texttt{compute\_wiki\_vital\_signs(languagecode)} realizza questi c
 Se non esiste, viene creata la tabella \texttt{vital\_signs\_metrics} con una chiave primaria composta da: 
 \texttt{(langcode, year\_year\_month, year\_month, topic, m1, m1\_calculation, m1\_value, m2, m2\_calculation, m2\_value)}. 
 Questa struttura assicura l’idempotenza: lo stesso conteggio non può essere inserito più volte poiché gli \texttt{INSERT} avvengono con la clausola \texttt{ON CONFLICT DO NOTHING}. 
-Ogni riga rappresenta un esperimento di conteggio, in cui \texttt{m1} identifica la metrica primaria (ad es. \emph{monthly\_edits, threshold, 5}) e \texttt{m2} una condizione aggiuntiva o una suddivisione (ad es. \emph{active\_months\_row, bin, 7--12}). I valori numerici sono salvati nei campi \texttt{m1\_count} (denominatore) e \texttt{m2\_count} (numeratore condizionato).
+Ogni riga rappresenta un esperimento di conteggio, in cui \texttt{m1} identifica la metrica primaria (ad es. monthly\_edits, threshold, 5) e \texttt{m2} una condizione aggiuntiva o una suddivisione (ad es. active\_months\_row, bin, 7-12). I valori numerici sono salvati nei campi \texttt{m1\_count} (denominatore) e \texttt{m2\_count} (numeratore condizionato).
 
 \paragraph{Retention}  
-Per misurare la capacità della comunità di trattenere i nuovi utenti, lo script costruisce due \emph{baseline}, ovvero i valori di riferimento: il numero di utenti registrati in ciascun mese (\texttt{year\_month\_registration}) e il numero di utenti al primo edit (\texttt{year\_month\_first\_edit}). 
+Per misurare la capacità della comunità di trattenere i nuovi utenti, lo script costruisce due baseline, ovvero i valori di riferimento: il numero di utenti registrati in ciascun mese (\texttt{year\_month\_registration}) e il numero di utenti al primo edit (\texttt{year\_month\_first\_edit}). 
 Su queste coorti calcola quanti editor restano attivi dopo 24 ore, 7, 30, 60, 365 e 730 giorni dal primo contributo, interrogando i campi \texttt{edit\_count\_*} in \texttt{wiki\_editor\_metrics}. 
 Ogni misura produce due righe: una confrontata con la baseline dei registrati e una con quella dei first edit.
 
 \paragraph{Active editors}  
-Gli editor vengono classificati in base al numero di edit mensili: \emph{attivi} (almeno 5) e \emph{molto attivi} (almeno 100). 
-Oltre alle soglie vengono costruiti istogrammi per classi di attività (\emph{1--5, 5--10, 10--50, ... fino a \textgreater 10000}). 
-Questi valori alimentano altre metriche, ad esempio \emph{stability} e \emph{balance}.
+Gli editor vengono classificati in base al numero di edit mensili: attivi (almeno 5) e molto attivi (almeno 100). 
+Oltre alle soglie vengono costruiti istogrammi per classi di attività (1-5, 5-10, 10-50, ... fino a >10000). 
+Questi valori alimentano altre metriche, ad esempio stability e balance.
 
 \paragraph{Stability}  
 La stabilità combina le soglie di attività con la durata della partecipazione, misurata tramite \texttt{active\_months\_row}, che indica i mesi consecutivi di attività di un editor. 
-I valori sono suddivisi in bin (2, 3--6, 7--12, 13--24, \textgreater 24 mesi). 
+I valori sono suddivisi in bin (2, 3-6, 7-12, 13-24, \textgreater 24 mesi). 
 Per ciascun mese la somma dei bin è confrontata con la baseline, mentre la classe ``1 mese attivo'' è calcolata come complemento, garantendo che le percentuali coprano il 100\%.
 
 \paragraph{Balance}  
@@ -333,13 +333,12 @@ Il bilanciamento misura il ricambio generazionale suddividendo gli editor per \t
 In questo modo si osserva la quota di nuove e vecchie generazioni fra gli editor attivi.
 
 \paragraph{Special functions e primary editors}  
-La stessa logica della balance è applicata a categorie specifiche: 
-\texttt{monthly\_edits\_technical} per i \emph{technical editors} e \texttt{monthly\_edits\_coordination} per i \emph{coordinators}. 
-Inoltre, vengono calcolati i \emph{primary editors}, distinguendo quanti editor attivi hanno come lingua principale quella analizzata e quanti provengono da altre wiki (\texttt{primarylang}).
+\texttt{monthly\_edits\_technical} per i technical editors e \texttt{monthly\_edits\_coordination} per i coordinators. 
+Inoltre, vengono calcolati i primary editors, distinguendo quanti editor attivi hanno come lingua principale quella analizzata e quanti provengono da altre wiki (\texttt{primarylang}).
 
-\paragraph{Flags e amministratori}  
+\paragraph{Flag e amministratori}  
 Tra gli editor attivi vengono conteggiati i ruoli più alti (\texttt{highest\_flag}, ad esempio sysop, autopatrolled, bureaucrat). 
-A livello annuale si calcolano anche i dati sugli amministratori distinguendo tra \emph{flussi} e \emph{stock}:  
+A livello annuale si calcolano anche i dati sugli amministratori distinguendo tra flussi e stock:  
 \begin{itemize}
   \item i flussi rappresentano le variazioni, cioè quanti utenti hanno ricevuto un flag (\texttt{granted\_flag}) o lo hanno perso (\texttt{removed\_flag}) in un certo anno;  
   \item lo stock rappresenta lo stato complessivo, cioè quanti utenti detengono un certo flag in quell’anno.  
@@ -386,7 +385,7 @@ RUN pip install --no-cache-dir -r /requirements.txt
 
 Il file \texttt{docker-compose.yml} rappresenta il cuore del progetto: attraverso la sua definizione è possibile orchestrare in modo coordinato tutte le componenti della pipeline.  
 Grazie a Docker Compose, con un unico comando si avviano i diversi servizi che compongono l’architettura, garantendo isolamento, riproducibilità e una gestione semplificata delle dipendenze.
-Nel file sono stati evitati sia l’utilizzo del tag \texttt{latest} per le immagini, sia l’impiego di \emph{named volume}, in quanto sconsigliati in ambienti di produzione.% \cite{wikitechDocker}.
+Nel file sono stati evitati sia l’utilizzo del tag \texttt{latest} per le immagini, sia l’impiego di named volume, in quanto sconsigliati in ambienti di produzione.% \cite{wikitechDocker}.
 Ho inoltre utilizzato un file \texttt{.env} (letto automaticamente da Docker Compose) per la gestione delle variabili d’ambiente, in modo da separare le configurazioni sensibili dal codice.
 
 I servizi definiti nel file possono essere suddivisi in quattro gruppi funzionali principali:  
@@ -420,13 +419,13 @@ I servizi di Airflow condividono la stessa configurazione tramite l’ancora YAM
 
 \paragraph{airflow\_init}
 \texttt{airflow\_init} prepara l’ambiente prima dell’esecuzione dei componenti runtime. La  sua esecuzione dipende da \texttt{postgres}. All’avvio esegue la sequenza di inizializzazione:
-\begin{quote}\ttfamily
-/bin/bash -c "airflow db init \&\& airflow users create \\
-\phantom{xxxx}--username \$\{AIRFLOW\_USER\} \\
-\phantom{xxxx}--password \$\{AIRFLOW\_PASSWORD\} \\
-\phantom{xxxx}--firstname Andrea --lastname Denina \\
-\phantom{xxxx}--role Admin --email andredeninaf@gmail.com"
-\end{quote}
+\begin{verbatim}
+/bin/bash -c "airflow db init && airflow users create \
+    --username ${AIRFLOW_USER} \
+    --password ${AIRFLOW_PASSWORD} \
+    --firstname Andrea --lastname Denina \
+    --role Admin --email andredeninaf@gmail.com"
+\end{verbatim}
 Il primo comando crea tutte le tabelle dei metadati su PostgreSQL; il secondo registra un utente amministratore per l’accesso all’interfaccia web. Questo servizio deve completarsi con successo prima di avviare webserver e scheduler.
 
 \paragraph{airflow (webserver)}
@@ -439,14 +438,14 @@ Oltre ai volumi condivisi, monta anche \texttt{/opt/airflow/tmp} come volume tem
 Dipende da \texttt{airflow\_init} e \texttt{postgres}, assicurando che il database sia pronto prima di iniziare la pianificazione.
 
 \subsubsection{PostgreSQL}
-Il servizio \texttt{postgres} fornisce il database relazionale utilizzato sia come \emph{metadatabase} di Airflow sia come storage applicativo per le tabelle della pipeline. È basato sull’immagine ufficiale \texttt{postgres:15} ed è configurato tramite le variabili d’ambiente \texttt{POSTGRES\_USER}, \texttt{POSTGRES\_PASSWORD} e \texttt{POSTGRES\_DB}, che definiscono rispettivamente utente, password e nome del database predefinito (usato da Airflow per i metadati tramite l’URI \texttt{AIRFLOW\_\_DATABASE\_\_SQL\_ALCHEMY\_CONN}).\\
-Per garantire la persistenza, i dati sono salvati nel volume \texttt{./postgres-data:/var/lib/postgresql/data}. All’avvio, lo script \texttt{init\_multidb.sql} viene montato nella directory di bootstrap \texttt{/docker-entrypoint-initdb.d/} e crea i due database applicativi:
-\begin{quote}\ttfamily
-    \phantom{xxxx}CREATE DATABASE vital\_signs\_web; \\
-    \phantom{xxxx}CREATE DATABASE vital\_signs\_editors;
-\end{quote}
+Il servizio \texttt{postgres} fornisce il database relazionale utilizzato sia come metadatabase di Airflow sia come storage applicativo per le tabelle della pipeline. È basato sull’immagine ufficiale \texttt{postgres:15} ed è configurato tramite le variabili d’ambiente \texttt{POSTGRES\_USER}, \texttt{POSTGRES\_PASSWORD} e \texttt{POSTGRES\_DB}, che definiscono rispettivamente utente, password e nome del database predefinito (usato da Airflow per i metadati tramite l’URI \texttt{AIRFLOW\_\_DATABASE\_\_SQL\_ALCHEMY\_CONN}).\\
+Per garantire la persistenza, i dati sono salvati nel volume \texttt{./postgres-data:/var/lib/postgresql/data}. All'avvio, lo script \texttt{init\_multidb.sql} viene montato nella directory di bootstrap \texttt{/docker-entrypoint-initdb.d/} e crea i due database applicativi:
+\begin{verbatim}
+CREATE DATABASE vital_signs_web;
+CREATE DATABASE vital_signs_editors;
+\end{verbatim}
 
-Il servizio espone un \emph{healthcheck} basato su \texttt{pg\_isready} eseguito ogni 10 secondi con 5 tentativi (\texttt{retries: 5}); finché il database non risulta pronto, gli altri container che vi dipendono non proseguono l’inizializzazione. La policy \texttt{restart: always} assicura il riavvio automatico in caso di errore. Complessivamente, questa configurazione rende il database affidabile e idoneo sia all’orchestrazione (metadati Airflow) sia alla persistenza dei risultati della pipeline.
+Il servizio espone un healthcheck basato su \texttt{pg\_isready} eseguito ogni 10 secondi con 5 tentativi (\texttt{retries: 5}); finché il database non risulta pronto, gli altri container che vi dipendono non proseguono l’inizializzazione. La policy \texttt{restart: always} assicura il riavvio automatico in caso di errore. Complessivamente, questa configurazione rende il database affidabile e idoneo sia all’orchestrazione (metadati Airflow) sia alla persistenza dei risultati della pipeline.
 
 \subsubsection{Servizi di monitoraggio}
 
@@ -478,9 +477,9 @@ Il servizio \texttt{statsd-exporter} è basato sull’immagine \texttt{prom/stat
 Monta il file di mapping \texttt{./monitoring/statsd.yaml} nella directory \texttt{/etc/statsd.yaml}.  
 Espone due porte: \texttt{9125} per la ricezione delle metriche StatsD da Airflow, e \texttt{9102} per l’esposizione delle metriche in formato Prometheus.  
 Il servizio viene avviato con un comando personalizzato che abilita il logging dettagliato e carica la configurazione di mapping:
-\begin{quote}\ttfamily
-statsd\_exporter --log.level debug --statsd.mapping-config=/etc/statsd.yaml
-\end{quote}
+\begin{verbatim}
+statsd_exporter --log.level debug --statsd.mapping-config=/etc/statsd.yaml
+\end{verbatim}
 
 Nella sezione successiva (Sezione~\ref{sec:implmonitoring}) verrà approfondita l’integrazione e la configurazione dell’intero sistema di estrazione e analisi delle metriche, mostrando come questi componenti cooperino per fornire un’osservabilità completa della pipeline.
 
@@ -488,7 +487,7 @@ Nella sezione successiva (Sezione~\ref{sec:implmonitoring}) verrà approfondita 
 \subsubsection{Dashboard}
 
 Il servizio \texttt{dash-app} è costruito a partire dal \texttt{Dockerfile} presente nella directory \texttt{./dashboards} ed espone la porta \texttt{8050}.  
-Su questo container viene eseguita un’applicazione Dash che fornisce le \emph{dashboard} per la visualizzazione dei \textit{vital\_signs}.  
+Su questo container viene eseguita un’applicazione Dash che fornisce le dashboard per la visualizzazione dei \textit{vital\_signs}.  
 Il servizio è stato utilizzato unicamente nella fase di sviluppo, con lo scopo di verificare visivamente la correttezza delle metriche calcolate e valutare l’integrazione della nuova architettura con il frontend preesistente.  
 
 \section{Metriche e monitoraggio}
@@ -531,37 +530,36 @@ Queste metriche sono inviate da Airflow al servizio \texttt{statsd-exporter} sul
 
 \paragraph{Mapping con statsd-exporter}
 Il servizio \texttt{statsd-exporter} riceve i pacchetti StatsD e li converte in metriche compatibili con Prometheus.  
-Il file di configurazione \texttt{statsd.yaml} definisce il mapping tra i nomi in notazione puntata (\emph{dot notation}) e metriche con etichette Prometheus.  
+Il file di configurazione \texttt{statsd.yaml} definisce il mapping tra i nomi in notazione puntata (dot notation) e metriche con etichette Prometheus.  
 Ad esempio, la metrica \texttt{ti.finish.my\_dag.my\_task.success} viene trasformata in:
-\begin{quote}\ttfamily
-ti\_finish\{dag\_id="my\_dag", task\_id="my\_task", state="success"\} 1
-\end{quote}
-L’output delle metriche trasformate è esposto sull’endpoint HTTP \texttt{/metrics} della porta \texttt{9102}.  
+\begin{verbatim}
+ti_finish{dag_id="my_dag", task_id="my_task", state="success"} 1
+\end{verbatim}
+L'output delle metriche trasformate è esposto sull'endpoint HTTP \texttt{/metrics} della porta \texttt{9102}.  
 Un esempio di output è il seguente:
-\begin{quote}\ttfamily
-\# HELP ti\_finish Numero di Task completate in un dato DAG \\
-\# TYPE ti\_finish counter \\
-ti\_finish\{dag\_id="vital\_signs", task\_id="calc\_vs", state="success"\} 42
-\end{quote}
+\begin{verbatim}
+# HELP ti_finish Numero di Task completate in un dato DAG
+# TYPE ti_finish counter
+ti_finish{dag_id="vital_signs", task_id="calc_vs", state="success"} 42
+\end{verbatim}
 
 \paragraph{Prometheus come storage}
-Prometheus è configurato per effettuare lo \emph{scraping} dell’endpoint \texttt{statsd-exporter:9102/metrics} ogni 5 secondi.  
-Il file \texttt{prometheus.yml} definisce lo \emph{scrape job} e l’intervallo di campionamento.  
+Prometheus è configurato per effettuare lo scraping dell’endpoint \texttt{statsd-exporter:9102/metrics} ogni 5 secondi.  
+Il file \texttt{prometheus.yml} definisce lo scrape job e l’intervallo di campionamento.  
 In questo progetto Prometheus non è stato utilizzato per l’alerting, ma esclusivamente come:
 \begin{itemize}
-    \item \emph{time series database};
-    \item \emph{data source} per Grafana.
+    \item time series database;
+    \item datasource per Grafana.
 \end{itemize}
 In tal modo le metriche generate da Airflow vengono archiviate e rese interrogabili attraverso PromQL.
 
-\paragraph{Grafana: dashboard e datasource}
-Grafana è stato configurato con provisioning automatico di:
-\begin{itemize}
-    \item \texttt{datasource}, che definisce Prometheus come sorgente dati (URL: \texttt{http://prometheus:9090});
-    \item \texttt{dashboard}, salvate in formato JSON e caricate all’avvio nel volume \texttt{./monitoring/grafana/dashboards}.
-\end{itemize}
-Questa configurazione permette di rendere riproducibile e portabile l’intero sistema di visualizzazione, evitando modifiche manuali tramite l’interfaccia web.
+\paragraph{Grafana}
+Per Grafana è stato adottato il meccanismo di provisioning, ovvero la definizione dichiarativa della configurazione tramite file, che consente di automatizzare la creazione delle sorgenti dati e il caricamento delle dashboard senza dover intervenire manualmente dall’interfaccia web.
 
+In particolare, il file \texttt{datasources.yaml} definisce Prometheus come sorgente dati principale, specificandone il tipo, l’URL di accesso (\texttt{http://prometheus:9090}
+) e ulteriori opzioni di configurazione. Allo stesso modo, il file \texttt{dashboards.yaml} stabilisce i parametri per il caricamento automatico delle dashboard, che sono codificate in formato JSON e mantenute all’interno della cartella \texttt{./monitoring/grafana/dashboards}.
+
+Questa configurazione garantisce che l’intero sistema di visualizzazione sia riproducibile e portabile: ogni volta che Grafana viene avviato, datasource e dashboard vengono istanziati coerentemente all’ambiente, evitando interventi manuali e assicurando uniformità tra diverse esecuzioni.
 Queste sono le query PromQL utilizzate per costruire le dashboard:
 
 \begin{itemize}

@@ -17,8 +17,12 @@ Nei paragrafi seguenti, ogni tecnologia viene descritta singolarmente.
 
 \section{Docker}
 \label{sec:docker}
-Docker è una piattaforma open-source che consente di creare, distribuire ed eseguire applicazioni all'interno di pacchetti detti container. È importante notare che quando si parla di Docker, di solito ci si riferisce a Docker Engine, il software che ospita i container. Docker utilizza la virtualizzazione a livello di sistema operativo (containerizzazione), in particolare utilizza alcune feature del Kernel Linux per garantire l’isolamento e il controllo dei pacchetti. Alcuni esempi di strumenti del Kernel che vengono utilizzati sono i cgroup e i namespace. I cgroups (control groups) sono una funzionalità del kernel linux che permette di limitare, monitorare e assegnare le risorse del sistema ai diversi processi in esecuzione. In questo modo, ogni container può essere configurato per utilizzare solo una certa quantità di risorse, evitando che un singolo container possa consumare tutte le risorse dell’host a discapito degli altri.
-I namespace, invece, sono un meccanismo che isola la visione che ha un’applicazione delle risorse di sistema. Grazie ai namespace, ogni container vede solo i processi, le interfacce di rete, i punti di mount e le variabili d’ambiente che gli sono stati assegnati, come se fosse l'unico sistema attivo sulla macchina. Questo garantisce un elevato livello di isolamento rispetto agli altri container e al sistema operativo. Questo approccio, basato sulla containerizzazione (Figura \ref{fig:docker_containerization}), rende i container molto più leggeri (nell’ordine di megabyte, contro i gigabyte di molte VM)[IBM docker] e più rapidi da avviare rispetto alle macchine virtuali tradizionali. L’efficienza ottenuta consente di eseguire molti più container sullo stesso hardware rispetto alle VM e di rendere lo sviluppo e il deployment delle applicazioni più agili e flessibili.
+Docker è una piattaforma open-source che consente di creare, distribuire ed eseguire applicazioni all'interno di pacchetti detti container. È importante notare che quando si parla di Docker, di solito ci si riferisce a Docker Engine, il software che ospita i container. Docker utilizza la virtualizzazione a livello di sistema operativo (containerizzazione), in particolare utilizza alcune feature del Kernel Linux per garantire l’isolamento e il controllo dei pacchetti.
+\paragraph{Tecnicismi}
+Alcuni esempi di strumenti del Kernel che vengono utilizzati sono i cgroup e i namespace. I cgroups (control groups) sono una funzionalità del kernel linux che permette di limitare, monitorare e assegnare le risorse del sistema ai diversi processi in esecuzione. In questo modo, ogni container può essere configurato per utilizzare solo una certa quantità di risorse, evitando che un singolo container possa consumare tutte le risorse dell’host a discapito degli altri.
+I namespace, invece, sono un meccanismo che isola la visione che ha un’applicazione delle risorse di sistema. Grazie ai namespace, ogni container vede solo i processi, le interfacce di rete, i punti di mount e le variabili d’ambiente che gli sono stati assegnati, come se fosse l'unico sistema attivo sulla macchina. Questo garantisce un elevato livello di isolamento rispetto agli altri container e al sistema operativo. 
+\paragraph{Vantaggi della containerizzazione}
+Questo approccio, basato sulla containerizzazione (Figura \ref{fig:docker_containerization}), rende i container molto più leggeri (nell’ordine di megabyte, contro i gigabyte di molte VM)~\cite{ibm_docker} e più rapidi da avviare rispetto alle macchine virtuali tradizionali. L’efficienza ottenuta consente di eseguire molti più container sullo stesso hardware rispetto alle VM e di rendere lo sviluppo e il deployment delle applicazioni più agili e flessibili.
 
 \begin{figure}[h]
     \centering
@@ -79,7 +83,7 @@ In generale, i bind mount sono consigliati quando si vuole controllare esattamen
 Airflow è una piattaforma open-source progettata per la gestione automatizzata dei flussi di lavoro. Consente di definire, pianificare e monitorare in modo programmatico i workflow, tramite una pratica interfaccia utente integrata.
 Creato originariamente da Airbnb, Airflow è sviluppato in Python ed è progettato secondo il paradigma del Configuration as Code. 
 
-La Configuration-as-Code (CaC) è un approccio che prevede la gestione delle configurazioni tramite codice, invece che attraverso modifiche manuali o strumenti proprietari. In pratica, le configurazioni vengono trattate come vero e proprio codice applicativo. Questo metodo offre diversi vantaggi: garantisce coerenza e ripetibilità nelle configurazioni, riduce il rischio di errori umani e semplifica il ripristino in caso di problemi. Inoltre, essendo gestite come codice, le configurazioni possono essere versionate tramite sistemi di controllo versione (come Git), permettendo di tracciare facilmente le modifiche e tornare a versioni precedenti se necessario.
+Questo approccio prevede la gestione delle configurazioni tramite codice, invece che attraverso modifiche manuali o strumenti proprietari. In pratica, le configurazioni vengono trattate come vero e proprio codice applicativo. Questo metodo offre diversi vantaggi: garantisce coerenza e ripetibilità nelle configurazioni, riduce il rischio di errori umani e semplifica il ripristino in caso di problemi. Inoltre, essendo gestite come codice, le configurazioni possono essere versionate tramite sistemi di controllo versione (come Git), permettendo di tracciare facilmente le modifiche e tornare a versioni precedenti se necessario.
 
 Airflow sfrutta Python per definire i flussi, a differenza di altre piattaforme simili, che tipicamente utilizzano linguaggi markup come XML. Questo approccio permette agli sviluppatori di importare librerie o script esistenti nel loro workflow.
 
@@ -97,9 +101,9 @@ Tra questi i principali sono:
     Nel codice, un DAG è definito come un oggetto Python in cui si specificano parametri come:
     \begin{itemize}
         \item ID e descrizione del DAG;
-        \item schedule\_interval (frequenza di esecuzione, ad esempio giornaliera o mensile);
-        \item start\_date e altri parametri opzionali come ad esempio retries (quante volte può essere rieseguita una task);
-        \item i task che lo compongono e le relative dipendenze (ad esempio, usando task1 >> task2).
+        \item \texttt{schedule\_interval} (frequenza di esecuzione, ad esempio giornaliera o mensile);
+        \item \texttt{start\_date} e altri parametri opzionali come ad esempio \texttt{retries} (quante volte può essere rieseguita una task);
+        \item i task che lo compongono e le relative dipendenze (ad esempio, usando \texttt{task1 >> task2}).
     \end{itemize}
     
     La definizione di un DAG in Airflow consente di:
@@ -111,7 +115,7 @@ Tra questi i principali sono:
     
     In seguito verrà mostrato un esempio di DAG:
     
-    \begin{lstlisting}[language=Python]
+    \begin{lstlisting}[language=Python, basicstyle=\scriptsize\ttfamily, caption={Esempio di DAG in Airflow}, label={lst:dag_example}]
     from airflow import DAG
     from airflow.operators.python import PythonOperator
     from datetime import datetime
@@ -136,35 +140,38 @@ Tra questi i principali sono:
     \item \textbf{Task}: rappresenta l'unità base di esecuzione: ogni task corrisponde a una singola operazione o processo all'interno di un workflow. Le task vengono organizzate all'interno dei DAG e collegate tra loro tramite dipendenze che ne determinano l'ordine di esecuzione. 
     Esistono due principali tipi di task, nella mia implementazione ho utilizzato solo gli Operator ma li citerò per fornire un maggiore contesto:
     \begin{itemize}
-        \item \textbf{Operator}: sono template di task predefiniti, pensati per svolgere operazioni comuni (ad esempio eseguire codice Python, eseguire comandi Bash, inviare email, ecc.). Sono il tipo di task più utilizzato. I principali sono PythonOperator, BashOperator, EmailOperator.
+        \item \textbf{Operator}: sono template di task predefiniti, pensati per svolgere operazioni comuni (ad esempio eseguire codice Python, eseguire comandi Bash, inviare email, ecc.). Sono il tipo di task più utilizzato. I principali sono \texttt{PythonOperator}, \texttt{BashOperator}, \texttt{EmailOperator}.
         \item \textbf{Sensor}: sono una sottoclasse di operator. Sono progettati per attendere il verificarsi di un evento esterno.
     \end{itemize}
 
     In Airflow, i concetti di Task e Operator sono in parte intercambiabili, ma è comunque utile pensarli come elementi distinti: in pratica, gli Operator e i Sensor rappresentano dei modelli (template), e ogni volta che ne istanzi uno all'interno di un DAG, stai effettivamente creando una Task.
     Ogni esecuzione di una task (detta Task Instance) attraversa diversi stati durante il proprio ciclo di vita:
     \begin{itemize}
-        \item \textbf{none}: la task non è ancora stata messa in coda perché le dipendenze non sono soddisfatte
-        \item \textbf{scheduled}: la task è stata programmata per l'esecuzione, avendo tutte le dipendenze soddisfatte
-        \item \textbf{queued}: la task è in attesa di essere eseguita da un worker
-        \item \textbf{running}: la task è in esecuzione
-        \item \textbf{success}: la task è terminata con successo
-        \item \textbf{failed}: la task è fallita a causa di un errore
-        \item \textbf{skipped}: la task è stata saltata (ad esempio per una branch condizionale)
-        \item \textbf{upstream\_failed}: una task a monte è fallita, impedendo l'esecuzione
-        \item \textbf{up\_for\_retry}: la task è fallita, ma sono previsti tentativi di retry
-        \item (altri stati specifici come restarting, up\_for\_reschedule, deferred, removed, etc.)
+        \item \texttt{none}: la task non è ancora stata messa in coda perché le dipendenze non sono soddisfatte
+        \item \texttt{scheduled}: la task è stata programmata per l'esecuzione, avendo tutte le dipendenze soddisfatte
+        \item \texttt{queued}: la task è in attesa di essere eseguita da un worker
+        \item \texttt{running}: la task è in esecuzione
+        \item \texttt{success}: la task è terminata con successo
+        \item \texttt{failed}: la task è fallita a causa di un errore
+        \item \texttt{skipped}: la task è stata saltata (ad esempio per una branch condizionale)
+        \item \texttt{upstream\_failed}: una task a monte è fallita, impedendo l'esecuzione
+        \item \texttt{up\_for\_retry}: la task è fallita, ma sono previsti tentativi di retry
+        \item (altri stati specifici come restarting, \texttt{up\_for\_reschedule}, \texttt{deferred}, \texttt{removed}, etc.)
     \end{itemize}
 \end{itemize}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{img/task_lifecycle_diagram.png}
+    \includegraphics[width=\textwidth]{img/task_lifecycle_diagram.png}
     \caption{Diagramma di tutti i possibili stati di una task}
     \label{fig:task_lifecycle}
 \end{figure}
 
-Come si può vedere in Figura \ref{fig:task_lifecycle}, l'obiettivo ideale è che una task attraversi lo stato da none a success, passando per scheduled, queued e running. Per impostazione predefinita, una task viene eseguita solo se tutte le sue upstream (le task che la precedono nel flusso logico) sono completate con successo, ma Airflow offre anche strumenti avanzati di controllo del flusso (branching, trigger rules, ecc.).
 
+
+Come si può vedere in Figura \ref{fig:task_lifecycle}, l'obiettivo ideale è che una task attraversi lo stato da none a success, passando per \texttt{scheduled}, \texttt{queued} e \texttt{running}. Per impostazione predefinita, una task viene eseguita solo se tutte le sue upstream (le task che la precedono nel flusso logico) sono completate con successo, ma Airflow offre anche strumenti avanzati di controllo del flusso (branching, trigger rules, ecc.).
+
+\newpage
 
 \subsection{Architettura}
 \label{sec:architettura}
@@ -173,18 +180,18 @@ L'architettura di Airflow è formata da diversi componenti. Un'installazione min
 \begin{itemize}
     \item \textbf{Scheduler}: Il cuore del sistema, si occupa di pianificare l'esecuzione dei workflow (DAG) secondo la programmazione definita, individuando i task che devono essere eseguiti e inviandoli all'esecutore (executor). L'executor, che è una proprietà configurabile dello scheduler, gestisce l'esecuzione dei task e può lavorare in modalità locale o distribuita, a seconda delle esigenze e delle risorse disponibili.
     \item \textbf{Webserver}: Fornisce un'interfaccia web intuitiva che permette di visualizzare, monitorare e gestire i DAG e i task, analizzare i log, forzare l'esecuzione manuale dei workflow e diagnosticare eventuali problemi.
-    \item \textbf{Cartella /dags}: Una directory locale (o su storage condiviso) in cui risiedono i file Python che definiscono i DAG. Lo scheduler esegue periodicamente la scansione di questa cartella per individuare nuovi workflow o aggiornamenti ai workflow esistenti.
+    \item \textbf{Cartella \texttt{/dags}}: Una directory locale (o su storage condiviso) in cui risiedono i file Python che definiscono i DAG. Lo scheduler esegue periodicamente la scansione di questa cartella per individuare nuovi workflow o aggiornamenti ai workflow esistenti.
     \item \textbf{Meta Database}: Un database relazionale (tipicamente PostgreSQL o MySQL) utilizzato da tutti i componenti di Airflow per tracciare lo stato delle esecuzioni dei DAG e dei task, memorizzare configurazioni, cronologia delle esecuzioni, log degli errori e altri metadati fondamentali.
 \end{itemize}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.6\textwidth]{img/diagram_basic_airflow_architecture.png}
-    \caption{Fig 2.3 Diagramma del deployment minimo di Airflow}
+    \includegraphics[width=0.8\textwidth]{img/diagram_basic_airflow_architecture.png}
+    \caption{Diagramma del deployment minimo di Airflow}
     \label{fig:airflow_minimal_deployment}
 \end{figure}
 
-In Figura ~\ref{fig:airflow_minimal_deployment} viene mostrata la configurazione più semplice di Airflow, in cui tutti i componenti principali (scheduler, webserver e database) vengono eseguiti sulla stessa macchina. In questo scenario si utilizza solitamente il LocalExecutor: scheduler e worker condividono lo stesso processo Python e i file dei DAG vengono letti direttamente dal filesystem locale. Anche l’interfaccia web (webserver) viene eseguita sulla stessa macchina. È importante far notare la differenza tra executor e worker: 
+In Figura ~\ref{fig:airflow_minimal_deployment} viene mostrata la configurazione più semplice di Airflow, in cui tutti i componenti principali (scheduler, webserver e database) vengono eseguiti sulla stessa macchina. In questo scenario si utilizza solitamente il \texttt{LocalExecutor}: scheduler e worker condividono lo stesso processo Python e i file dei DAG vengono letti direttamente dal filesystem locale. Anche l’interfaccia web (webserver) viene eseguita sulla stessa macchina. È importante far notare la differenza tra executor e worker: 
 L’executor in Airflow determina la modalità e la logica con cui i task vengono messi in esecuzione, gestendo l’assegnazione dei task ai worker.
 Il worker è invece il processo che riceve i task dall’executor e li esegue.
 
@@ -202,7 +209,7 @@ Nel mio progetto, il monitoring della pipeline dati è stato realizzato tramite 
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{img/monitoraggioschema.png}
+    \includegraphics[width=0.8\textwidth]{img/monitoraggioschema.drawio.pdf}
     \caption{Schema logico dei servizi di estrazione metriche e monitoraggio}
     \label{fig:monitoring_schema}
 \end{figure}
@@ -216,7 +223,7 @@ StatsD è un network daemon sviluppato da Etsy, progettato per raccogliere metri
 <nome_metrica>:<valore>|<tipo>
 \end{verbatim}
 
-dove il nome, espresso in notazione a punti (es. dag.task.duration), identifica la metrica, il valore è numerico e il tipo può indicare un contatore (c), un gauge (g), un timer (ms), ecc. Airflow utilizza questo formato per esportare automaticamente informazioni come l’avvio e il completamento delle task, la durata delle esecuzioni e l’uso delle risorse, inviandole in modo asincrono e a basso overhead.
+dove il nome, espresso in notazione a punti (es. \texttt{dag.task.duration}), identifica la metrica, il valore è numerico e il tipo può indicare un contatore (c), un gauge (g), un timer (ms), ecc. Airflow utilizza questo formato per esportare automaticamente informazioni come l’avvio e il completamento delle task, la durata delle esecuzioni e l’uso delle risorse, inviandole in modo asincrono e a basso overhead.
 
 Poiché il formato StatsD non è compatibile con Prometheus, entra in gioco lo StatsD Exporter, un servizio che traduce le metriche ricevute in serie temporali etichettate secondo lo standard Prometheus. La conversione è definita tramite un file di mapping in YAML, che permette di trasformare un nome di metrica come:
 
@@ -230,7 +237,7 @@ nella forma Prometheus:
 cpu_usage{dag="vital_signs", task="process_dump"} 30
 \end{verbatim}
 
-In questo modo le metriche diventano interrogabili con PromQL e possono essere visualizzate in Grafana. Dal punto di vista infrastrutturale, StatsD Exporter è stato configurato come servizio dedicato in docker-compose.yml, in ascolto sulla porta 9125 per ricevere i pacchetti StatsD da Airflow e sulla porta 9102 per esporre le metriche convertite a Prometheus.
+In questo modo le metriche diventano interrogabili con PromQL e possono essere visualizzate in Grafana. Dal punto di vista infrastrutturale, StatsD Exporter è stato configurato come servizio dedicato all'interno del file \texttt{docker-compose.yml}, in ascolto sulla porta 9125 per ricevere i pacchetti StatsD da Airflow e sulla porta 9102 per esporre le metriche convertite a Prometheus.
 
 \subsection{Prometheus}
 \label{sec:prometheus}
@@ -272,7 +279,7 @@ Il funzionamento di Grafana si articola in alcuni passaggi fondamentali:
     \item personalizzazione dei pannelli con legende, soglie e formattazioni per facilitare l’interpretazione.
 \end{itemize}
 Grafana ha un’integrazione nativa con Prometheus: una volta aggiunto come data source, Grafana può eseguire query direttamente tramite PromQL e trasformare i risultati in visualizzazioni interattive. Questo legame è uno dei motivi principali per cui Prometheus e Grafana vengono spesso adottati insieme: Prometheus si occupa della raccolta e conservazione delle metriche, mentre Grafana ne gestisce la presentazione e l’esplorazione.
-Il linguaggio di interrogazione di Prometheus è PromQL (Prometheus Query Language), appositamente concepito per l’analisi delle serie temporali. Permette di estrarre valori istantanei (instant vector) e intervalli temporali (range vector), ed include funzioni come rate(), nonché operatori aritmetici e aggregati, utili per calcolare medie, percentili e confronti tra metriche. In Grafana, le query scritte in PromQL alimentano i pannelli, consentendo di trasformare dati grezzi in visualizzazioni significative.
+Il linguaggio di interrogazione di Prometheus è PromQL (Prometheus Query Language), appositamente concepito per l’analisi delle serie temporali. Permette di estrarre valori istantanei (instant vector) e intervalli temporali (range vector), ed include funzioni come \texttt{rate()}, nonché operatori aritmetici e aggregati, utili per calcolare medie, percentili e confronti tra metriche. In Grafana, le query scritte in PromQL alimentano i pannelli, consentendo di trasformare dati grezzi in visualizzazioni significative.
 
 
 Un esempio di query PromQL potrebbe essere:
@@ -281,13 +288,14 @@ Un esempio di query PromQL potrebbe essere:
 \end{verbatim}
 
 Questa query calcola la velocità di scrittura su disco in byte al secondo negli ultimi 5 minuti, filtrando per il job specifico e ignorando i dispositivi vuoti. Il risultato può essere visualizzato in un grafico a linee o in un gauge, a seconda delle preferenze dell'utente.
-La funzione rate() in PromQL calcola la velocità media di incremento al secondo di una metrica di tipo counter, valutata su un intervallo temporale specificato (es. ultimi 5 minuti).
+La funzione \texttt{rate()} in PromQL calcola la velocità media di incremento al secondo di una metrica di tipo counter, valutata su un intervallo temporale specificato (es. ultimi 5 minuti).
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.8\textwidth]{img/rate-function.png}
+    \includegraphics[width=0.7\textwidth]{img/rate-function.png}
     \caption{Esempio di visualizzazione di una query PromQL in Grafana che mostra la velocità di scrittura su disco}
     \label{fig:rate_function_example}
 \end{figure}
 
 
+\newpage
