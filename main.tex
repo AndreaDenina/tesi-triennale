@@ -22,7 +22,7 @@
 \usepackage{titlesec} % per formato custom dei titoli dei capitoli
 \usepackage{listings}
 \usepackage{xcolor}
-
+\usepackage{url}
 \usepackage{tocloft}
 
 % Spazio prima/dopo il titolo "Indice"
@@ -104,7 +104,7 @@
       \titleformat{\chapter}
         {\normalfont\Huge\bfseries}{\thechapter}{1em}{}
         
-      \titlespacing*{\chapter}{0pt}{0.59in}{0.02in}
+      \titlespacing*{\chapter}{0pt}{0.2in}{0.02in}
       \titlespacing*{\section}{0pt}{0.20in}{0.02in}
       \titlespacing*{\subsection}{0pt}{0.10in}{0.02in}
       
@@ -124,6 +124,8 @@
 %%   tecniche utilizzate e/o sviluppate
 %%   risultati raggiunti, sottolineando il contributo personale del laureando/a
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
       
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -145,6 +147,7 @@
     \addcontentsline{toc}{chapter}{Bibliografia}
     % stile con ordinamento alfabetico in funzione degli autori
     \bibliographystyle{plain}
+    \nocite{*}
     \bibliography{biblio}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

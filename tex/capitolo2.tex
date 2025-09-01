@@ -22,9 +22,9 @@ Docker è una piattaforma open-source che consente di creare, distribuire ed ese
 Alcuni esempi di strumenti del Kernel che vengono utilizzati sono i cgroup e i namespace. I cgroups (control groups) sono una funzionalità del kernel linux che permette di limitare, monitorare e assegnare le risorse del sistema ai diversi processi in esecuzione. In questo modo, ogni container può essere configurato per utilizzare solo una certa quantità di risorse, evitando che un singolo container possa consumare tutte le risorse dell’host a discapito degli altri.
 I namespace, invece, sono un meccanismo che isola la visione che ha un’applicazione delle risorse di sistema. Grazie ai namespace, ogni container vede solo i processi, le interfacce di rete, i punti di mount e le variabili d’ambiente che gli sono stati assegnati, come se fosse l'unico sistema attivo sulla macchina. Questo garantisce un elevato livello di isolamento rispetto agli altri container e al sistema operativo. 
 \paragraph{Vantaggi della containerizzazione}
-Questo approccio, basato sulla containerizzazione (Figura \ref{fig:docker_containerization}), rende i container molto più leggeri (nell’ordine di megabyte, contro i gigabyte di molte VM)~\cite{ibm_docker} e più rapidi da avviare rispetto alle macchine virtuali tradizionali. L’efficienza ottenuta consente di eseguire molti più container sullo stesso hardware rispetto alle VM e di rendere lo sviluppo e il deployment delle applicazioni più agili e flessibili.
+Questo approccio, basato sulla containerizzazione (Figura~\ref{fig:docker_containerization}), rende i container molto più leggeri (nell’ordine di megabyte, contro i gigabyte di molte VM)~\cite{ibm_docker} e più rapidi da avviare rispetto alle macchine virtuali tradizionali. L’efficienza ottenuta consente di eseguire molti più container sullo stesso hardware rispetto alle VM e di rendere lo sviluppo e il deployment delle applicazioni più agili e flessibili.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.6\textwidth]{img/contvsvirt.png}
     \caption{Confronto tra le macchine virtuali tradizionali e i container di Docker}
@@ -160,7 +160,7 @@ Tra questi i principali sono:
     \end{itemize}
 \end{itemize}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{img/task_lifecycle_diagram.png}
     \caption{Diagramma di tutti i possibili stati di una task}
@@ -169,7 +169,7 @@ Tra questi i principali sono:
 
 
 
-Come si può vedere in Figura \ref{fig:task_lifecycle}, l'obiettivo ideale è che una task attraversi lo stato da none a success, passando per \texttt{scheduled}, \texttt{queued} e \texttt{running}. Per impostazione predefinita, una task viene eseguita solo se tutte le sue upstream (le task che la precedono nel flusso logico) sono completate con successo, ma Airflow offre anche strumenti avanzati di controllo del flusso (branching, trigger rules, ecc.).
+Come si può vedere in Figura~\ref{fig:task_lifecycle}, l'obiettivo ideale è che una task attraversi lo stato da none a success, passando per \texttt{scheduled}, \texttt{queued} e \texttt{running}. Per impostazione predefinita, una task viene eseguita solo se tutte le sue upstream (le task che la precedono nel flusso logico) sono completate con successo, ma Airflow offre anche strumenti avanzati di controllo del flusso (branching, trigger rules, ecc.).
 
 \newpage
 
@@ -184,14 +184,14 @@ L'architettura di Airflow è formata da diversi componenti. Un'installazione min
     \item \textbf{Meta Database}: Un database relazionale (tipicamente PostgreSQL o MySQL) utilizzato da tutti i componenti di Airflow per tracciare lo stato delle esecuzioni dei DAG e dei task, memorizzare configurazioni, cronologia delle esecuzioni, log degli errori e altri metadati fondamentali.
 \end{itemize}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{img/diagram_basic_airflow_architecture.png}
     \caption{Diagramma del deployment minimo di Airflow}
     \label{fig:airflow_minimal_deployment}
 \end{figure}
 
-In Figura ~\ref{fig:airflow_minimal_deployment} viene mostrata la configurazione più semplice di Airflow, in cui tutti i componenti principali (scheduler, webserver e database) vengono eseguiti sulla stessa macchina. In questo scenario si utilizza solitamente il \texttt{LocalExecutor}: scheduler e worker condividono lo stesso processo Python e i file dei DAG vengono letti direttamente dal filesystem locale. Anche l’interfaccia web (webserver) viene eseguita sulla stessa macchina. È importante far notare la differenza tra executor e worker: 
+In Figura~\ref{fig:airflow_minimal_deployment} viene mostrata la configurazione più semplice di Airflow, in cui tutti i componenti principali (scheduler, webserver e database) vengono eseguiti sulla stessa macchina. In questo scenario si utilizza solitamente il \texttt{LocalExecutor}: scheduler e worker condividono lo stesso processo Python e i file dei DAG vengono letti direttamente dal filesystem locale. Anche l’interfaccia web (webserver) viene eseguita sulla stessa macchina. È importante far notare la differenza tra executor e worker: 
 L’executor in Airflow determina la modalità e la logica con cui i task vengono messi in esecuzione, gestendo l’assegnazione dei task ai worker.
 Il worker è invece il processo che riceve i task dall’executor e li esegue.
 
@@ -207,7 +207,7 @@ Tipicamente vengono utilizzati strumenti di monitoring per raccogliere dati come
 
 Nel mio progetto, il monitoring della pipeline dati è stato realizzato tramite l’integrazione di strumenti open source come StatsD, Prometheus e Grafana. Airflow esporta automaticamente metriche relative allo stato delle task, alle risorse utilizzate (CPU/RAM) e alla durata delle esecuzioni, che vengono poi raccolte e visualizzate in dashboard interattive. Questo consente di identificare rapidamente task fallite o anomalie di performance e intervenire in modo reattivo, garantendo affidabilità ed efficienza nella gestione dei workflow automatizzati.
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{img/monitoraggioschema.drawio.pdf}
     \caption{Schema logico dei servizi di estrazione metriche e monitoraggio}
@@ -290,7 +290,7 @@ Un esempio di query PromQL potrebbe essere:
 Questa query calcola la velocità di scrittura su disco in byte al secondo negli ultimi 5 minuti, filtrando per il job specifico e ignorando i dispositivi vuoti. Il risultato può essere visualizzato in un grafico a linee o in un gauge, a seconda delle preferenze dell'utente.
 La funzione \texttt{rate()} in PromQL calcola la velocità media di incremento al secondo di una metrica di tipo counter, valutata su un intervallo temporale specificato (es. ultimi 5 minuti).
 
-\begin{figure}[h]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.7\textwidth]{img/rate-function.png}
     \caption{Esempio di visualizzazione di una query PromQL in Grafana che mostra la velocità di scrittura su disco}
