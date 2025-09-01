@@ -29,7 +29,7 @@ In questo modo si vuole mostrare il percorso seguito per passare da una soluzion
 
 Come introdotto nella Sezione~\ref{sec:airflow}, il Directed Acyclic Graph (DAG) è lo strumento con cui Apache Airflow permette di modellare un workflow come un insieme di task con relazioni di dipendenza.
 
-Nel progetto ho definito il DAG \texttt{vital\_signs}, contenuto nel file \texttt{vital\_signs\_dag.py} all’interno della cartella \texttt{dags/}. Questo DAG ha il compito di processare i dati provenienti dai MediaWiki History Dumps, eseguendo diversi calcoli su di essi e popolando progressivamente due database distinti: prima quello degli editors, che raccoglie le metriche derivate dai dump, e successivamente quello web, in cui vengono calcolati e salvati i vital signs a partire dalle metriche estratte.
+Nel progetto ho definito il DAG \texttt{vital\_signs}, contenuto nel file \texttt{vital\_signs\_dag.py} all’interno della cartella \texttt{dags/}. Questo DAG ha il compito di processare i dati provenienti dai MediaWiki History Dumps, eseguendo diversi calcoli su di essi e popolando progressivamente due database distinti: prima quello degli editor, che raccoglie le metriche derivate dai dump, e successivamente quello web, in cui vengono calcolati e salvati i vital sign a partire dalle metriche estratte.
 
 Vediamo ora come è stato definito il DAG, le sue caratteristiche principali e come sono stati adattati gli script esistenti per funzionare in questo nuovo contesto.
 
@@ -74,7 +74,7 @@ In particolare:
 Nel DAG \texttt{vital\_signs} le task sono tutte implementate come \texttt{PythonOperator},
 quindi ciascuna invoca uno script Python specifico.
 La pipeline è delimitata da due sentinelle logiche, \texttt{start} ed \texttt{end} (entrambi \texttt{EmptyOperator}), fra le quali si sviluppa il flusso di elaborazione.
-Subito dopo l’avvio, la task \texttt{create\_dbs} prepara l’ambiente applicativo creando e inizializzando le tabelle dei due database coinvolti (editors e web).
+Subito dopo l’avvio, la task \texttt{create\_dbs} prepara l’ambiente applicativo creando e inizializzando le tabelle dei due database coinvolti (editor e web).
 A questo punto il DAG si ramifica per lingua (in base a \texttt{wikilanguagecodes}) e per ogni edizione linguistica vengono eseguiti in sequenza tre step:
 \texttt{<code>\_process\_dump} per estrarre e caricare le metriche dai MediaWiki History Dumps nel DB degli editor,
 \texttt{<code>\_calc\_flags} per calcolare i flag/profili degli editor,
@@ -82,9 +82,9 @@ A questo punto il DAG si ramifica per lingua (in base a \texttt{wikilanguagecode
 
 Terminata la fase per lingua sul database \texttt{vital\_signs\_editors}, una fase cross-wiki (\texttt{calc\_primary\allowbreak\_language})
  calcola la lingua primaria degli utenti a partire dalle metriche calcolate nelle precedenti fasi.
-Infine, avviene una seconda ramificazione per lingua dove, con \texttt{code\_calc\_vs}, si computano i vital signs e si popolano le tabelle del database \texttt{vital\_signs\_web} a partire dalle metriche già consolidate.
+Infine, avviene una seconda ramificazione per lingua dove, con \texttt{code\_calc\_vs}, si computano i vital sign e si popolano le tabelle del database \texttt{vital\_signs\_web} a partire dalle metriche già consolidate.
 L’intera catena è vincolata da dipendenze esplicite (\texttt{>>}) che assicurano l’ordine corretto; inoltre, ogni task utilizza callback di logging di esito (\texttt{on\_success\_callback}, \texttt{on\_failure\_callback}) per tracciare in modo uniforme completamenti e fallimenti delle esecuzioni.
-In questo modo il DAG rimane leggibile e modulare: ogni task incapsula un passaggio ben definito e l’orchestrazione di Airflow garantisce una progressione deterministica dall’ingestione dei dump fino alla produzione dei vital signs.
+In questo modo il DAG rimane leggibile e modulare: ogni task incapsula un passaggio ben definito e l’orchestrazione di Airflow garantisce una progressione deterministica dall’ingestione dei dump fino alla produzione dei vital sign.
 
 
 \begin{lstlisting}[language=Python, caption={Esempio di definizione di una task e dipendenze del DAG}, label=lst:dag_tasks, basicstyle=\scriptsize\ttfamily]
@@ -119,7 +119,7 @@ Infine, verrà presentato un esempio di refactoring relativo al calcolo della li
 \label{subsec:create_dbs}
 
 La prima task del DAG è \texttt{create\_dbs}, responsabile dell’inizializzazione dei database utilizzati dalla pipeline. 
-Si tratta di un passo preliminare che assicura la presenza e la corretta struttura delle tabelle necessarie sia per il database degli editors sia per quello dei vital signs. 
+Si tratta di un passo preliminare che assicura la presenza e la corretta struttura delle tabelle necessarie sia per il database degli editor sia per quello dei vital sign. 
 La task è implementata come \texttt{PythonOperator} e chiama la funzione \texttt{create\_db}, definita in un file (\texttt{create\_db.py}) nella cartella \texttt{scripts/}.
 
 Lo script utilizza la libreria \texttt{SQLAlchemy} per gestire le connessioni ai due database (tramite le stringhe di connessione definite in \texttt{config.py}). 
@@ -258,14 +258,14 @@ I risultati vengono infine inseriti in due tabelle distinte:
 \end{itemize}
 
 Tutti gli inserimenti avvengono in modalità idempotente (\texttt{ON CONFLICT DO NOTHING} o \texttt{DO UPDATE}), in modo da evitare duplicazioni quando la pipeline viene rieseguita sugli stessi dump. 
-In questo modo la task produce un dataset consistente e normalizzato, da cui le fasi successive del DAG (\texttt{calc\_flags}, \texttt{calc\_streaks}, \texttt{calc\_vs}) possono derivare i vital signs.
+In questo modo la task produce un dataset consistente e normalizzato, da cui le fasi successive del DAG (\texttt{calc\_flags}, \texttt{calc\_streaks}, \texttt{calc\_vs}) possono derivare i vital sign.
 
 \subsection{Task \textless langcode\textgreater\_calc\_flags}
 \label{subsec:calc_flags}
 
 La task \texttt{<langcode>\_calc\_flags} ha lo scopo di analizzare i flag assegnati agli editor
 e individuare per ciascun utente quello di rango più elevato,
-salvandolo nella tabella degli editors.
+salvandolo nella tabella degli editor.
 Per ogni edizione linguistica viene generata una task dedicata che prende come input il codice della lingua e utilizza i dati prodotti dalla fase precedente e salvati nel database \texttt{vital\_signs\_editors}.
 
 Lo script associato alla task \texttt{calc\_flags} (\texttt{calculate\_editors\_flag}) si occupa di determinare, per ciascun utente, il flag più rilevante ricevuto durante la sua attività. In un primo passaggio vengono contati i flag presenti tra tutti gli editor, così da costruire un dizionario di supporto. Successivamente è definita una gerarchia di priorità (\texttt{flag ranks}) che assegna un valore crescente ai diversi flag: dai più comuni, come \texttt{confirmed}, fino a quelli di maggiore responsabilità, come \texttt{steward} o \texttt{founder}.
@@ -315,7 +315,7 @@ Per misurare la capacità della comunità di trattenere i nuovi utenti, lo scrip
 Su queste coorti calcola quanti editor restano attivi dopo 24 ore, 7, 30, 60, 365 e 730 giorni dal primo contributo, interrogando i campi \texttt{edit\_count\_*} in \texttt{wiki\_editor\_metrics}. 
 Ogni misura produce due righe: una confrontata con la baseline dei registrati e una con quella dei first edit.
 
-\paragraph{Active editors}  
+\paragraph{Active editor}  
 Gli editor vengono classificati in base al numero di edit mensili: attivi (almeno 5) e molto attivi (almeno 100). 
 Oltre alle soglie vengono costruiti istogrammi per classi di attività (1-5, 5-10, 10-50, ... fino a \textgreater 10000). 
 Questi valori alimentano altre metriche, ad esempio stability e balance.
@@ -329,9 +329,9 @@ Per ciascun mese la somma dei bin è confrontata con la baseline, mentre la clas
 Il bilanciamento misura il ricambio generazionale suddividendo gli editor per \texttt{lustrum\_first\allowbreak\_edit} (lustro del primo contributo, ad esempio 2001--2005, 2006--2010). 
 In questo modo si osserva la quota di nuove e vecchie generazioni fra gli editor attivi.
 
-\paragraph{Special functions e primary editors}  
-\texttt{monthly\_edits\_technical} per i technical editors e \texttt{monthly\allowbreak\_edits\_coordination} per i coordinators. 
-Inoltre, vengono calcolati i primary editors, distinguendo quanti editor attivi hanno come lingua principale quella analizzata e quanti provengono da altre wiki (\texttt{primarylang}).
+\paragraph{Special function e primary editor}  
+\texttt{monthly\_edits\_technical} per i technical editor e \texttt{monthly\allowbreak\_edits\_coordination} per i coordinators. 
+Inoltre, vengono calcolati i primary editor, distinguendo quanti editor attivi hanno come lingua principale quella analizzata e quanti provengono da altre wiki (\texttt{primarylang}).
 
 \paragraph{Flag e amministratori}  
 Tra gli editor attivi vengono conteggiati i ruoli più alti (\texttt{highest\_flag}, ad esempio sysop, autopatrolled, bureaucrat). 
@@ -485,7 +485,7 @@ Nella sezione successiva (Sezione~\ref{sec:implmonitoring}) verrà approfondita 
 \subsubsection{Dashboard}
 
 Il servizio \texttt{dash-app} è costruito a partire dal \texttt{Dockerfile} presente nella directory \texttt{./dashboards} ed espone la porta \texttt{8050}.  
-Su questo container viene eseguita un’applicazione Dash che fornisce le dashboard per la visualizzazione dei \textit{vital\_signs}.  
+Su questo container viene eseguita un’applicazione Dash che fornisce le dashboard per la visualizzazione dei vital sign.  
 Il servizio è stato utilizzato unicamente nella fase di sviluppo, con lo scopo di verificare visivamente la correttezza delle metriche calcolate e valutare l’integrazione della nuova architettura con il frontend preesistente.  
 
 \section{Metriche e monitoraggio}
